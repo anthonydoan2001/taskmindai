@@ -1,0 +1,142 @@
+---
+description: Apply these rules when creating the project
+globs:
+alwaysApply: true
+---
+## Project Overview
+
+* **Type:** Web-based scheduling and productivity platform
+* **Description:** A platform that converts natural language goals into personalized calendar plans to enhance productivity and time management through AI-powered scheduling, secure user authentication, customizable calendars, and comprehensive analytics.
+* **Primary Goal:** Create a web-based platform that converts natural language goals into personalized calendar plans, enabling users to efficiently manage their time and boost productivity.
+
+## Project Structure
+
+### Framework-Specific Routing
+
+* **Directory Rules:**
+
+    * **Next.js 14 (App Router):** Enforce the use of the `app/` directory with nested route folders. Each primary route gets its folder with a `page.tsx` file following the convention: `app/[route]/page.tsx`.
+    * Example 1: "Next.js 14 (App Router)" → `app/[route]/page.tsx` conventions
+    * Example 2: "Next.js (Pages Router)" → `pages/[route].tsx` pattern (Not applicable in this project)
+    * Example 3: "React Router 6" → `src/routes/` with `createBrowserRouter` (For reference only)
+
+### Core Directories
+
+* **Versioned Structure:**
+
+    * **app/api:** Next.js 14 API routes with Route Handlers for server-side functionality
+    * **app/components:** Reusable UI components enhanced with Shadcn UI, Radix UI, and Framer Motion for smooth animations
+    * **app/(auth):** Dedicated authentication routes and components powered by Clerk
+    * **app/(dashboard):** Analytics dashboard and productivity insights interfaces
+    * **lib:** Utility functions and integrations (e.g., Supabase, tRPC, Open AI, Google Calendar API, Stripe, Upstash)
+
+### Key Files
+
+* **Stack-Versioned Patterns:**
+
+    * **app/dashboard/layout.tsx:** Next.js 14 root layout for dashboard, ensuring global state management and UI consistency
+    * **app/auth/login/page.tsx:** Next.js 14 implementation for secure user authentication via Clerk
+    * **app/api/schedule/route.ts:** API route using Next.js 14 Route Handlers for processing natural language scheduling requests
+
+## Tech Stack Rules
+
+* **Version Enforcement:**
+
+    * **next@14:** App Router enforced; usage of `app/` directory is mandatory and avoids legacy patterns such as `getInitialProps`
+    * **typescript@4.x:** Strict typing enforced with no implicit any
+    * **tailwindcss@3.x:** Utility-first styling with configured dark/light mode
+    * **supabase@1.x:** RLS and real-time database features leveraged for data management and security
+
+## PRD Compliance
+
+* **Non-Negotiable:**
+
+    * "Convert natural language goals into personalized calendar plans through AI-powered scheduling, secure authentication, and seamless calendar integrations." This mandate drives all version-specific constraints, including secure Clerk authentication, Next.js 14 routing through the `app/` directory, and integration with external services such as Google Calendar, Stripe, and Upstash.
+
+## App Flow Integration
+
+* **Stack-Aligned Flow:**
+
+    * Example: "Next.js 14 Auth Flow → `app/auth/login/page.tsx` uses server actions for secure session management via Clerk."
+    * Example: "AI Scheduling Flow → `app/api/schedule/route.ts` processes GPT-4 driven natural language input into calendar events."
+
+## Best Practices
+
+* **Next.js 14**
+    * Use the App Router with nested, self-contained folders for routes
+    * Implement server actions and route handlers for API calls
+    * Leverage file-based routing to keep routes intuitive and maintainable
+
+* **TypeScript**
+    * Enforce strict type checking
+    * Use interfaces and types to define component props and API responses
+    * Avoid any usage and document required types
+
+* **Tailwind CSS**
+    * Follow utility-first styling for rapid UI development
+    * Use dark and light mode configurations for accessibility
+    * Organize custom classes and variants in a centralized Tailwind config file
+
+* **Shadcn UI & Radix UI**
+    * Use pre-built interactive components to maintain design consistency
+    * Customize components using Tailwind for branding
+    * Ensure accessibility is built-in by leveraging Radix UI primitives
+
+* **Framer Motion**
+    * Use for smooth, interactive animations
+    * Keep animations subtle to enhance UX without distracting the user
+    * Document animation sequences and interaction triggers
+
+* **Supabase**
+    * Implement Row Level Security (RLS) to secure user data
+    * Use real-time subscriptions to keep the client updated
+    * Schedule regular encrypted backups
+
+* **tRPC**
+    * Utilize type-safe API communications
+    * Keep API schemas consistent between client and server
+    * Document endpoints and error handling practices
+
+* **Clerk**
+    * Enforce secure user authentication with OAuth and multi-factor authentication
+    * Manage session lifecycle effectively
+    * Follow role-based access management strictly
+
+* **OpenAI GPT-4**
+    * Use for natural language processing to generate scheduling insights
+    * Allow user-edited corrections to AI recommendations for improved UX
+    * Setup appropriate rate limiting with Upstash (Redis) to balance free and premium usage
+
+* **Google Calendar API & Stripe**
+    * Use minimum required scopes and validations for calendar synchronizations
+    * Implement secure payment flows with Stripe for subscription management
+    * Maintain webhook integrations with robust error handlers
+
+## Rules
+
+* Derive folder/file patterns directly from the tech stack versions provided by the CodeGuide Starter Pro kit.
+* If Next.js 14 App Router is chosen: Enforce the `app/` directory with nested route folders; no mixing with legacy `pages/` structure.
+* Enforce auth routes, API endpoints, and UI components in designated directories as per the CodeGuide Starter Pro structured guidelines.
+* Maintain a strict separation of concerns, ensuring UI, API, and utility functions are isolated in their respective directories.
+* Mirror routing and file structure logic for services integrated via tRPC, Supabase, and Clerk, ensuring version consistency across implementations.
+
+## Rules Metrics
+
+Before starting the project development, create a metrics file in the root of the project called
+
+`cursor_metrics.md`.
+
+### Instructions:
+
+* Each time a cursor rule is used as context, update `cursor_metrics.md`.
+* Use the following format for `cursor_metrics.md:`
+
+# Rules Metrics
+
+## Usage
+
+The number of times rules is used as context
+
+* rule-name.mdc: 5
+* another-rule.mdc: 2
+* ...other rules

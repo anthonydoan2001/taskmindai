@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background Circle -->
+    <circle cx="250" cy="250" r="240" fill="url(#gradient)" opacity="0.1"/>
+    
+    <!-- Calendar Base -->
+    <rect x="100" y="100" width="300" height="300" rx="20" fill="white" stroke="currentColor" stroke-width="2"/>
+    
+    <!-- Calendar Header -->
+    <rect x="100" y="100" width="300" height="60" rx="20" fill="currentColor" opacity="0.1"/>
+    
+    <!-- Calendar Grid -->
+    <g stroke="currentColor" stroke-width="1" opacity="0.2">
+        <line x1="100" y1="200" x2="400" y2="200"/>
+        <line x1="100" y1="250" x2="400" y2="250"/>
+        <line x1="100" y1="300" x2="400" y2="300"/>
+        <line x1="100" y1="350" x2="400" y2="350"/>
+        <line x1="166" y1="160" x2="166" y2="400"/>
+        <line x1="232" y1="160" x2="232" y2="400"/>
+        <line x1="298" y1="160" x2="298" y2="400"/>
+        <line x1="364" y1="160" x2="364" y2="400"/>
+    </g>
+    
+    <!-- Task Items -->
+    <g>
+        <!-- Task 1 -->
+        <rect x="120" y="220" width="180" height="20" rx="4" fill="currentColor" opacity="0.8"/>
+        <!-- Task 2 -->
+        <rect x="120" y="270" width="120" height="20" rx="4" fill="currentColor" opacity="0.6"/>
+        <!-- Task 3 -->
+        <rect x="120" y="320" width="240" height="20" rx="4" fill="currentColor" opacity="0.4"/>
+    </g>
+    
+    <!-- AI/Automation Elements -->
+    <g transform="translate(320, 140)">
+        <circle cx="0" cy="0" r="30" fill="url(#ai-gradient)" opacity="0.9"/>
+        <path d="M-15 0 L0 15 L15 0 L0 -15 Z" fill="white"/>
+    </g>
+    
+    <!-- Gradients -->
+    <defs>
+        <linearGradient id="gradient" x1="0" y1="0" x2="500" y2="500">
+            <stop offset="0%" stop-color="var(--primary-color, #2563eb)"/>
+            <stop offset="100%" stop-color="var(--primary-color-light, #60a5fa)"/>
+        </linearGradient>
+        <linearGradient id="ai-gradient" x1="0" y1="0" x2="60" y2="60">
+            <stop offset="0%" stop-color="var(--primary-color, #2563eb)"/>
+            <stop offset="100%" stop-color="var(--primary-color-light, #60a5fa)"/>
+        </linearGradient>
+    </defs>
+</svg> 
