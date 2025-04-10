@@ -4,6 +4,9 @@ import { WebhookEvent } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
+export const runtime = 'edge'; // Add edge runtime
+export const dynamic = 'force-dynamic'; // Ensure dynamic handling
+
 type UserProfile = Database['public']['Tables']['user_profiles']['Insert'];
 
 const supabase = createClient<Database>(
@@ -175,12 +178,36 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 }
 
 export async function POST(req: Request) {
+  // Add CORS headers
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, svix-id, svix-timestamp, svix-signature',
+  };
+
+  // Handle OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
   console.log('Webhook endpoint hit');
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
     console.error('Missing CLERK_WEBHOOK_SECRET');
-    throw new Error('Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local');
+    return new Response(
+      JSON.stringify({ error: 'Missing CLERK_WEBHOOK_SECRET' }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
+    );
   }
 
   // Get the headers
@@ -199,14 +226,37 @@ export async function POST(req: Request) {
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
     console.error('Missing required Svix headers');
-    return new Response('Error occurred -- no svix headers', {
-      status: 400,
-    });
+    return new Response(
+      JSON.stringify({ error: 'Missing required Svix headers' }), 
+      { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
+    );
   }
 
   // Get the body
-  const payload = await req.json();
-  console.log('Webhook payload received:', JSON.stringify(payload, null, 2));
+  let payload;
+  try {
+    payload = await req.json();
+    console.log('Webhook payload received:', JSON.stringify(payload, null, 2));
+  } catch (err) {
+    console.error('Error parsing request body:', err);
+    return new Response(
+      JSON.stringify({ error: 'Error parsing request body' }), 
+      { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
+    );
+  }
+  
   const body = JSON.stringify(payload);
 
   // Create a new SVIX instance with your secret
@@ -223,14 +273,45 @@ export async function POST(req: Request) {
     console.log('Webhook verified successfully');
   } catch (err) {
     console.error('Error verifying webhook:', err);
-    return new Response('Error occurred', {
-      status: 400,
-    });
+    return new Response(
+      JSON.stringify({ error: 'Error verifying webhook signature' }), 
+      { 
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
+    );
   }
 
   // Log Supabase connection details (without sensitive info)
   console.log('Supabase URL being used:', process.env.NEXT_PUBLIC_SUPABASE_URL);
   console.log('Service role key present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-  return syncUserWithSupabase(evt);
+  try {
+    const response = await syncUserWithSupabase(evt);
+    // Add CORS headers to the successful response
+    const newHeaders = new Headers(response.headers);
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      newHeaders.set(key, value);
+    });
+    
+    return new Response(response.body, {
+      status: response.status,
+      headers: newHeaders,
+    });
+  } catch (error) {
+    console.error('Error in syncUserWithSupabase:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
+    );
+  }
 }
