@@ -30,27 +30,37 @@ async function syncUserWithSupabase(event: WebhookEvent) {
   // Handle user creation
   if (event.type === 'user.created') {
     console.log('Creating new user profile in Supabase');
-    const { id } = event.data;
+    const { id, email_addresses } = event.data;
+    console.log('User ID from Clerk:', id);
+    console.log('User email:', email_addresses?.[0]?.email_address);
 
     try {
       // Check if profile already exists
+      console.log('Checking for existing profile...');
       const { data: existingProfile, error: lookupError } = await supabase
         .from('user_profiles')
         .select()
         .eq('id', id)
         .single();
 
-      if (lookupError && lookupError.code !== 'PGRST116') {
-        console.error('Error looking up existing profile:', lookupError);
-        return new Response(JSON.stringify({ error: lookupError.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
+      if (lookupError) {
+        console.error('Lookup error details:', {
+          code: lookupError.code,
+          message: lookupError.message,
+          details: lookupError.details,
+          hint: lookupError.hint
         });
+        
+        if (lookupError.code !== 'PGRST116') {
+          return new Response(JSON.stringify({ error: lookupError.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
       }
 
-      // If profile exists, just return success
       if (existingProfile) {
-        console.log('User profile already exists in Supabase, skipping creation');
+        console.log('Existing profile found:', JSON.stringify(existingProfile, null, 2));
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -86,9 +96,18 @@ async function syncUserWithSupabase(event: WebhookEvent) {
         .single();
 
       if (profileError) {
-        console.error('Error creating user profile in Supabase:', profileError);
+        console.error('Profile creation error details:', {
+          code: profileError.code,
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint
+        });
         console.error('Profile data that failed:', JSON.stringify(defaultProfile, null, 2));
-        return new Response(JSON.stringify({ error: profileError.message }), {
+        return new Response(JSON.stringify({ 
+          error: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint 
+        }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
@@ -101,7 +120,12 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       });
     } catch (error) {
       console.error('Unexpected error during user creation:', error);
-      return new Response(JSON.stringify({ error: 'Internal server error during user creation' }), {
+      // Log the full error object for debugging
+      console.error('Full error details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      return new Response(JSON.stringify({ 
+        error: 'Internal server error during user creation',
+        details: error instanceof Error ? error.message : String(error)
+      }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -151,9 +175,11 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 }
 
 export async function POST(req: Request) {
+  console.log('Webhook endpoint hit');
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
+    console.error('Missing CLERK_WEBHOOK_SECRET');
     throw new Error('Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local');
   }
 
@@ -163,8 +189,16 @@ export async function POST(req: Request) {
   const svix_timestamp = headerPayload.get('svix-timestamp');
   const svix_signature = headerPayload.get('svix-signature');
 
+  // Log headers
+  console.log('Webhook headers received:', {
+    'svix-id': svix_id,
+    'svix-timestamp': svix_timestamp,
+    'svix-signature': svix_signature?.substring(0, 10) + '...' // Log partial signature for security
+  });
+
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
+    console.error('Missing required Svix headers');
     return new Response('Error occurred -- no svix headers', {
       status: 400,
     });
@@ -172,6 +206,7 @@ export async function POST(req: Request) {
 
   // Get the body
   const payload = await req.json();
+  console.log('Webhook payload received:', JSON.stringify(payload, null, 2));
   const body = JSON.stringify(payload);
 
   // Create a new SVIX instance with your secret
@@ -185,12 +220,17 @@ export async function POST(req: Request) {
       'svix-timestamp': svix_timestamp,
       'svix-signature': svix_signature,
     }) as WebhookEvent;
+    console.log('Webhook verified successfully');
   } catch (err) {
     console.error('Error verifying webhook:', err);
     return new Response('Error occurred', {
       status: 400,
     });
   }
+
+  // Log Supabase connection details (without sensitive info)
+  console.log('Supabase URL being used:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+  console.log('Service role key present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   return syncUserWithSupabase(evt);
 }
