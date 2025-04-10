@@ -26,17 +26,6 @@ interface CalendarEvent {
   borderColor?: string;
 }
 
-interface EventChangeInfo {
-  event: CalendarEvent;
-  oldEvent?: CalendarEvent;
-}
-
-interface DateSelectInfo {
-  start: Date;
-  end: Date;
-  allDay: boolean;
-}
-
 interface EventModalState {
   isOpen: boolean;
   mode: 'create' | 'edit';
