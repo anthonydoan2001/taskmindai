@@ -1,11 +1,11 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { DailyCheckIn } from "@/components/dashboard/daily-check-in";
+import { ViewCalendar } from "@/components/dashboard/view-calendar";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -32,20 +32,15 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
-        {/* Calendar will be added here */}
-        <Card className="p-6">
-          <div className="h-[600px] flex items-center justify-center border-2 border-dashed rounded-lg">
-            Calendar Component Coming Soon
-          </div>
-        </Card>
+        <ViewCalendar />
 
         <div className="space-y-6">
-          <Card className="p-6">
+          <div className="rounded-lg border bg-card p-6">
             <h2 className="text-xl font-semibold mb-4">Today's Focus</h2>
             <div className="space-y-4">
-              <p className="text-sm text-gray-500">No tasks scheduled for today</p>
+              <p className="text-sm text-muted-foreground">No tasks scheduled for today</p>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
 

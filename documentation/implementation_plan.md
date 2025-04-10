@@ -53,7 +53,7 @@ Below is the step-by-step implementation plan for TaskMind AI, a web-based platf
 
 7.  **Feedback & Customization Components:**
 
-    *   Develop components that allow users to drag-and-drop, lock blocks, adjust priorities, and provide feedback to the AI. (Reference: Core Features: AI Scheduling, Customization)
+    *   Develop components that allow users to drag-and-drop, "lock blocks, adjust priorities, and provide feedback to the AI. (Reference: Core Features: AI Scheduling, Customization)
 
 8.  **Validation (Frontend):** Run the Next.js development server via `npm run dev` and manually verify that pages (login, calendar, schedule) render with proper styling and interactivity. (Reference: Q&A: UI Validation)
 
