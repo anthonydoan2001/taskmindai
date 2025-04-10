@@ -1,34 +1,28 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Define protected routes - everything under dashboard and settings
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/settings(.*)']);
+// Public routes that don't require authentication
+const isPublicRoute = createRouteMatcher([
+  '/',  // Landing page
+  '/about(.*)',
+  '/features(.*)',
+  '/pricing(.*)',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/sso-callback(.*)',
+]);
 
 export default clerkMiddleware(async (auth, req) => {
-  const { pathname } = req.nextUrl;
-
-  // Skip middleware for public routes
-  if (
-    pathname === '/' ||                   // Landing page
-    pathname.startsWith('/about') ||      // About page
-    pathname.startsWith('/pricing') ||    // Pricing page
-    pathname.startsWith('/contact') ||    // Contact page
-    pathname.startsWith('/sign-in') ||    // Sign in pages
-    pathname.startsWith('/sign-up') ||    // Sign up pages
-    pathname.startsWith('/api/webhooks')  // Webhook endpoints
-  ) {
-    return;
-  }
-
-  // If it's a protected route, require authentication
-  if (isProtectedRoute(req)) {
+  // Only protect routes that are not public
+  if (!isPublicRoute(req)) {
     await auth.protect();
   }
-});
+}, { debug: process.env.NODE_ENV === 'development' });
 
 export const config = {
   matcher: [
-    '/((?!.+\\.[\\w]+$|_next).*)',
-    '/',
+    // Skip Next.js internals and all static files
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 };
