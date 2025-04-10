@@ -16,6 +16,7 @@ export function useSettings() {
   const supabase = useSupabase();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     // Wait for Clerk to load
@@ -38,35 +39,28 @@ export function useSettings() {
 
         if (profileError) {
           console.log('Profile error:', profileError);
-          if (profileError.code === 'PGRST116') {
-            console.log('Creating new profile with settings:', DEFAULT_SETTINGS);
-            const { data: newProfile, error: insertError } = await supabase
-              .from('user_profiles')
-              .insert({
-                clerk_id: user.id,
-                settings: DEFAULT_SETTINGS,
-                working_days: [
-                  { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-                  { dayOfWeek: '1', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '2', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-                ],
-              })
-              .select()
-              .single();
-
-            if (insertError) {
-              console.error('Error creating profile:', insertError);
-              throw insertError;
-            }
-
-            console.log('New profile created:', newProfile);
-            setSettings(DEFAULT_SETTINGS);
-          } else {
+          // Only throw if it's not a "no rows returned" error
+          if (profileError.code !== 'PGRST116') {
             throw profileError;
+          }
+          // If no profile exists, the webhook should have created it
+          // Let's wait a bit and try again
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const { data: retryProfile, error: retryError } = await supabase
+            .from('user_profiles')
+            .select('settings, id')
+            .eq('clerk_id', user.id)
+            .single();
+
+          if (retryError) {
+            throw retryError;
+          }
+
+          if (retryProfile?.settings) {
+            setSettings(retryProfile.settings);
+          } else {
+            console.warn('No settings found after retry, using defaults');
+            setSettings(DEFAULT_SETTINGS);
           }
         } else {
           console.log('Existing profile found:', profile);
@@ -77,8 +71,10 @@ export function useSettings() {
             setSettings(DEFAULT_SETTINGS);
           }
         }
+        setError(null);
       } catch (error) {
         console.error('Error in fetchSettings:', error);
+        setError(error as Error);
         toast.error('Failed to load settings');
       } finally {
         setLoading(false);
@@ -103,6 +99,7 @@ export function useSettings() {
           const newData = payload.new as { settings: UserSettings } | null;
           if (newData?.settings) {
             setSettings(newData.settings);
+            setError(null);
           }
         },
       )
@@ -111,7 +108,7 @@ export function useSettings() {
     return () => {
       channel.unsubscribe();
     };
-  }, [user?.id, clerkLoaded]);
+  }, [user?.id, clerkLoaded, supabase]);
 
   const updateSettings = useCallback(
     async (newSettings: Partial<UserSettings>) => {
@@ -205,5 +202,6 @@ export function useSettings() {
     settings,
     loading: loading || !clerkLoaded,
     updateSettings,
+    error,
   };
 }

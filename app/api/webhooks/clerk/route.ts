@@ -38,11 +38,6 @@ const supabase = createClient<Database>(
       autoRefreshToken: false,
       persistSession: false,
     },
-    global: {
-      headers: {
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      },
-    },
   },
 );
 
@@ -87,7 +82,7 @@ async function syncUserWithSupabase(event: WebhookEvent) {
         settings: {
           militaryTime: false,
           workType: 'full-time',
-          categories: [],
+          categories: ['Work', 'Personal', 'Errands'],
         },
         working_days: [
           { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
@@ -109,6 +104,10 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       }
 
       console.log('Successfully created user profile in Supabase');
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     } catch (error) {
       console.error('Unexpected error during user creation:', error);
       return new Response(JSON.stringify({ error: 'Internal server error during user creation' }), {

@@ -2,13 +2,20 @@
 
 import { useSession } from '@clerk/nextjs';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
-import { createContext, useContext, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import type { Database } from '@/types/supabase';
 
 const SupabaseContext = createContext<SupabaseClient<Database> | undefined>(undefined);
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
-  const { session } = useSession();
+  const session = useSession();
+  const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (session.session) {
+      session.session.getToken({ template: 'supabase' }).then(setSupabaseToken);
+    }
+  }, [session.session]);
 
   const supabase = useMemo(() => {
     return createClient<Database>(
@@ -19,16 +26,15 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
           autoRefreshToken: false,
           persistSession: false,
           detectSessionInUrl: false,
-          storage: undefined,
         },
         global: {
-          headers: {
-            Authorization: `Bearer ${session?.id || ''}`,
-          },
+          headers: supabaseToken ? {
+            Authorization: `Bearer ${supabaseToken}`,
+          } : {},
         },
       },
     );
-  }, [session?.id]);
+  }, [supabaseToken]);
 
   return <SupabaseContext.Provider value={supabase}>{children}</SupabaseContext.Provider>;
 }
