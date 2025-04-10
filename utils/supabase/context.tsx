@@ -1,11 +1,15 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import { useAuth } from '@clerk/nextjs';
 import { Database } from '@/types/supabase';
 
-const Context = createContext<any>(undefined);
+type SupabaseContext = {
+  supabase: SupabaseClient<Database>;
+};
+
+const Context = createContext<SupabaseContext | undefined>(undefined);
 
 export default function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const { getToken, userId } = useAuth();
@@ -63,7 +67,7 @@ export const useSupabase = () => {
   if (context === undefined) {
     throw new Error('useSupabase must be used within a SupabaseProvider');
   }
-  return context;
+  return context.supabase;
 };
 
 // Server-side client creation
