@@ -9,20 +9,26 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/sso-callback(.*)',
+  '/api/webhooks(.*)', // Webhook endpoints should be public
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Only protect routes that are not public
-  if (!isPublicRoute(req)) {
-    await auth.protect();
+  const { pathname } = req.nextUrl;
+
+  // Skip middleware for static files and public routes
+  if (isPublicRoute(req) || pathname.includes('.')) {
+    return;
   }
-}, { debug: process.env.NODE_ENV === 'development' });
+
+  // Protect all other routes
+  await auth.protect();
+});
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
+    // Skip all internal paths (_next)
+    '/((?!_next).*)',
+    // Optional: Skip static files
+    '/((?!favicon.ico|manifest.json|robots.txt).*)',
   ],
 };
