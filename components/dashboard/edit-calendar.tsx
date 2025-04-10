@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { EventApi, EventChangeArg, DateSelectArg } from '@fullcalendar/core';
 
 interface CalendarEvent {
   id: string;
@@ -40,7 +41,7 @@ interface EventModalState {
   isOpen: boolean;
   mode: 'create' | 'edit';
   event?: CalendarEvent;
-  selectedDates?: DateSelectInfo;
+  selectedDates?: DateSelectArg;
 }
 
 const eventColors = {
@@ -118,16 +119,16 @@ export function EditCalendar() {
 
   const [newEventTitle, setNewEventTitle] = useState('');
 
-  const handleEventChange = (info: EventChangeInfo) => {
-    const { event } = info;
+  const handleEventChange = (info: EventChangeArg) => {
+    const event = info.event;
     setEvents((currentEvents) =>
       currentEvents.map((e) =>
         e.id === event.id
           ? {
               ...e,
               title: event.title,
-              start: event.start,
-              end: event.end,
+              start: event.start || e.start,
+              end: event.end || e.end,
             }
           : e,
       ),
@@ -135,16 +136,25 @@ export function EditCalendar() {
     toast.success('Event updated');
   };
 
-  const handleEventClick = (event: CalendarEvent) => {
+  const handleEventClick = (info: { event: EventApi }) => {
+    const event = info.event;
     setEventModal({
       isOpen: true,
       mode: 'edit',
-      event,
+      event: {
+        id: event.id,
+        title: event.title,
+        start: event.start || new Date(),
+        end: event.end || new Date(),
+        backgroundColor: event.backgroundColor,
+        textColor: event.textColor,
+        classNames: event.classNames,
+      },
     });
     setNewEventTitle(event.title);
   };
 
-  const handleDateSelect = (info: DateSelectInfo) => {
+  const handleDateSelect = (info: DateSelectArg) => {
     setEventModal({
       isOpen: true,
       mode: 'create',
