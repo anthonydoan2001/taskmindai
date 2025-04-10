@@ -2,11 +2,10 @@ import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { randomUUID } from 'crypto';
+import type { Database } from '@/types/supabase';
 
 interface UserProfile {
   id: string;
-  clerk_id: string;
   settings: {
     militaryTime: boolean;
     workType: string;
@@ -18,16 +17,6 @@ interface UserProfile {
     endTime: string;
     isWorkingDay: boolean;
   }>;
-}
-
-interface Database {
-  public: {
-    Tables: {
-      user_profiles: {
-        Row: UserProfile;
-      };
-    };
-  };
 }
 
 const supabase = createClient<Database>(
@@ -55,7 +44,7 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       const { data: existingProfile, error: lookupError } = await supabase
         .from('user_profiles')
         .select()
-        .eq('clerk_id', id)
+        .eq('id', id)
         .single();
 
       if (lookupError && lookupError.code !== 'PGRST116') {
@@ -77,8 +66,7 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 
       // Create user profile with default settings and working days
       const { error: profileError } = await supabase.from('user_profiles').insert({
-        id: randomUUID(),
-        clerk_id: id,
+        id: id,
         settings: {
           militaryTime: false,
           workType: 'full-time',
@@ -126,11 +114,11 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       const { error: profileError } = await supabase
         .from('user_profiles')
         .delete()
-        .eq('clerk_id', id);
+        .eq('id', id);
 
       if (profileError) {
         console.error('Error deleting user profile in Supabase:', profileError);
-        console.error('Failed deletion for clerk_id:', id);
+        console.error('Failed deletion for id:', id);
         return new Response(JSON.stringify({ error: profileError.message }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
