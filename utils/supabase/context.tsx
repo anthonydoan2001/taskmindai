@@ -59,9 +59,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         global: {
           headers: supabaseToken ? {
             Authorization: `Bearer ${supabaseToken}`,
-            'Accept': 'application/vnd.pgrst.object+json',
+            'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'Prefer': 'return=representation',
           } : {},
         },
       },
@@ -148,9 +147,8 @@ export async function createClerkSupabaseClientSsr(auth: { getToken: (options?: 
         global: {
           headers: token ? {
             Authorization: `Bearer ${token}`,
-            'Accept': 'application/vnd.pgrst.object+json',
+            'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'Prefer': 'return=representation',
           } : {},
         },
       },
