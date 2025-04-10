@@ -20,7 +20,7 @@ const SessionContext = createContext<SessionContextType>({
 const publicRoutes = ['/', '/about', '/features', '/pricing', '/sign-in', '/sign-up'];
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const { isLoaded: authLoaded, isSignedIn, userId } = useAuth();
   const { session, isLoaded: sessionLoaded } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -29,12 +29,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(`${route}/`));
 
   useEffect(() => {
-    // Handle session expiration
-    if (!isLoading && !isSignedIn && !isPublicRoute) {
-      console.warn(AUTH_ERRORS.CLERK.SESSION_EXPIRED);
-      router.push('/sign-in');
+    // Handle session expiration and auth state
+    if (!isLoading) {
+      if (!isSignedIn && !isPublicRoute) {
+        console.warn(AUTH_ERRORS.CLERK.SESSION_EXPIRED);
+        const searchParams = new URLSearchParams();
+        searchParams.set('redirect_url', pathname);
+        router.push(`/sign-in?${searchParams.toString()}`);
+      } else if (isSignedIn && (pathname === '/sign-in' || pathname === '/sign-up')) {
+        router.push('/dashboard');
+      }
     }
-  }, [authLoaded, sessionLoaded, isSignedIn, isLoading, router, pathname, isPublicRoute]);
+  }, [isLoading, isSignedIn, isPublicRoute, pathname, router, userId]);
 
   return (
     <SessionContext.Provider

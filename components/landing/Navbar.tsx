@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { ModeToggle } from '../ui/mode-toggle';
-import { cn } from '@/lib/utils';
 import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
 import { useState } from 'react';
