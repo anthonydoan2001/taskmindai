@@ -22,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
               <SessionProvider>
                 <main className="min-h-screen bg-white dark:bg-gray-900">{children}</main>
+                <Toaster richColors />
               </SessionProvider>
             </ThemeProvider>
           </SupabaseProvider>
