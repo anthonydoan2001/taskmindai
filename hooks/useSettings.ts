@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useSession } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { type RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { useSupabase } from '@/utils/supabase/context';
@@ -13,17 +13,36 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 export function useSettings() {
   const { user, isLoaded: clerkLoaded } = useUser();
+  const { session } = useSession();
   const supabase = useSupabase();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+
+  // Get the Supabase token when Clerk is loaded
+  useEffect(() => {
+    if (!clerkLoaded || !session) return;
+
+    const getToken = async () => {
+      try {
+        const token = await session.getToken({ template: 'supabase' });
+        setSupabaseToken(token);
+      } catch (error) {
+        console.error('Error getting Supabase token:', error);
+        setError(error as Error);
+      }
+    };
+
+    getToken();
+  }, [clerkLoaded, session]);
 
   useEffect(() => {
-    // Wait for Clerk to load
-    if (!clerkLoaded) return;
+    // Wait for Clerk and Supabase token
+    if (!clerkLoaded || !supabaseToken) return;
 
     // If Clerk is loaded but no user, we're not authenticated
-    if (!user?.id) {
+    if (!user) {
       setLoading(false);
       return;
     }
