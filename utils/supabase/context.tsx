@@ -10,12 +10,27 @@ const SupabaseContext = createContext<SupabaseClient<Database> | undefined>(unde
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const { session } = useSession();
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (session) {
-      // Get JWT with the custom template that matches Supabase's format
-      session.getToken().then(setSupabaseToken);
+    async function updateToken() {
+      if (session) {
+        try {
+          const token = await session.getToken({ template: 'supabase' });
+          setSupabaseToken(token);
+          setError(null);
+        } catch (err) {
+          console.error('Failed to get Supabase token:', err);
+          setError(err instanceof Error ? err : new Error('Failed to get Supabase token'));
+          setSupabaseToken(null);
+        }
+      } else {
+        setSupabaseToken(null);
+        setError(null);
+      }
     }
+    
+    updateToken();
   }, [session]);
 
   const supabase = useMemo(() => {
@@ -36,6 +51,11 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
       },
     );
   }, [supabaseToken]);
+
+  if (error) {
+    // You can replace this with a proper error UI component
+    return <div>Error: {error.message}</div>;
+  }
 
   return <SupabaseContext.Provider value={supabase}>{children}</SupabaseContext.Provider>;
 }
@@ -83,22 +103,31 @@ export function createBrowserSupabaseClient() {
 }
 
 // Server-side client creation with Clerk auth
-export async function createClerkSupabaseClientSsr(auth: { getToken: () => Promise<string | null> }) {
-  const token = await auth.getToken();
-  
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-      global: {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
+export async function createClerkSupabaseClientSsr(auth: { getToken: (options?: { template?: string }) => Promise<string | null> }) {
+  try {
+    const token = await auth.getToken({ template: 'supabase' });
+    
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      throw new Error('Missing Supabase environment variables');
+    }
+    
+    return createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+        global: {
+          headers: token ? {
+            Authorization: `Bearer ${token}`,
+          } : {},
         },
       },
-    },
-  );
+    );
+  } catch (err) {
+    console.error('Failed to create Supabase client:', err);
+    throw err instanceof Error ? err : new Error('Failed to create Supabase client');
+  }
 }
