@@ -32,7 +32,11 @@ function getSupabaseClient(supabaseToken: string | null = null) {
           headers: supabaseToken ? {
             Authorization: `Bearer ${supabaseToken}`,
             'Accept': 'application/json',
-          } : {},
+            'Prefer': 'return=minimal',
+          } : {
+            'Accept': 'application/json',
+            'Prefer': 'return=minimal',
+          },
         },
       },
     );
@@ -158,10 +162,10 @@ export async function createClerkSupabaseClientSsr(auth: { getToken: (options?: 
           headers: token ? {
             Authorization: `Bearer ${token}`,
             'Accept': 'application/json',
-            'Prefer': 'return=minimal'
+            'Prefer': 'return=minimal',
           } : {
             'Accept': 'application/json',
-            'Prefer': 'return=minimal'
+            'Prefer': 'return=minimal',
           },
         },
       },

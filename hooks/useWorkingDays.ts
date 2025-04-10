@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser, useSession } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { useSupabase } from '@/utils/supabase/context';
@@ -17,14 +17,16 @@ const DEFAULT_WORKING_DAYS: WorkingDay[] = [
 
 export function useWorkingDays() {
   const { user, isLoaded: clerkLoaded } = useUser();
+  const { session } = useSession();
   const supabase = useSupabase();
   const [workingDays, setWorkingDays] = useState<WorkingDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!clerkLoaded) return;
 
-    if (!user?.id) {
+    if (!user?.id || !session) {
       setLoading(false);
       return;
     }
@@ -35,16 +37,23 @@ export function useWorkingDays() {
         const { data, error } = await supabase
           .from('user_profiles')
           .select('working_days')
-          .eq('clerk_id', user.id)
+          .eq('id', user.id)
           .single();
 
         if (error) {
           if (error.code === 'PGRST116') {
             // Profile not found, create one with default working days
-            const { error: createError } = await supabase.from('user_profiles').insert({
-              clerk_id: user.id,
-              working_days: DEFAULT_WORKING_DAYS,
-            });
+            const { error: createError } = await supabase
+              .from('user_profiles')
+              .insert({
+                id: user.id,
+                settings: {
+                  militaryTime: false,
+                  workType: 'full-time',
+                  categories: ['Work', 'Personal', 'Errands'],
+                },
+                working_days: DEFAULT_WORKING_DAYS,
+              });
 
             if (createError) throw createError;
             setWorkingDays(DEFAULT_WORKING_DAYS);
@@ -53,9 +62,11 @@ export function useWorkingDays() {
           throw error;
         }
 
-        setWorkingDays(data.working_days);
+        setWorkingDays(data.working_days || DEFAULT_WORKING_DAYS);
+        setError(null);
       } catch (error) {
         console.error('Error fetching working days:', error);
+        setError(error as Error);
         toast.error('Failed to fetch working days');
       } finally {
         setLoading(false);
@@ -70,10 +81,10 @@ export function useWorkingDays() {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen for all events
+          event: '*',
           schema: 'public',
           table: 'user_profiles',
-          filter: `clerk_id=eq.${user.id}`,
+          filter: `id=eq.${user.id}`,
         },
         (payload: RealtimePostgresChangesPayload<{ working_days: WorkingDay[] }>) => {
           console.log('Received working days update:', payload);
@@ -81,6 +92,7 @@ export function useWorkingDays() {
           if (newData?.working_days) {
             console.log('Setting new working days:', newData.working_days);
             setWorkingDays(newData.working_days);
+            setError(null);
           }
         },
       )
@@ -89,11 +101,15 @@ export function useWorkingDays() {
     return () => {
       channel.unsubscribe();
     };
-  }, [user?.id, clerkLoaded, supabase]);
+  }, [user?.id, clerkLoaded, supabase, session]);
 
   const updateWorkingDays = useCallback(
     async (newWorkingDays: WorkingDay[]) => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        console.error('No user ID available');
+        toast.error('You must be logged in to update working days');
+        return;
+      }
 
       try {
         setLoading(true);
@@ -104,16 +120,21 @@ export function useWorkingDays() {
 
         const { error } = await supabase
           .from('user_profiles')
-          .update({ working_days: newWorkingDays })
-          .eq('clerk_id', user.id);
+          .update({ 
+            working_days: newWorkingDays,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
 
         if (error) throw error;
 
         // Update local state immediately
         setWorkingDays(newWorkingDays);
+        setError(null);
         toast.success('Working days updated successfully');
       } catch (error) {
         console.error('Error updating working days:', error);
+        setError(error as Error);
         toast.error('Failed to update working days');
       } finally {
         setLoading(false);
@@ -126,5 +147,6 @@ export function useWorkingDays() {
     workingDays,
     loading: loading || !clerkLoaded,
     updateWorkingDays,
+    error,
   };
 }

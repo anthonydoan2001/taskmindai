@@ -34,8 +34,8 @@ export function useSettings() {
         console.log('Fetching settings for user:', user.id);
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
-          .select('settings, id')
-          .eq('clerk_id', user.id)
+          .select('settings')
+          .eq('id', user.id)
           .single();
 
         if (profileError) {
@@ -44,23 +44,34 @@ export function useSettings() {
           if (profileError.code !== 'PGRST116') {
             throw profileError;
           }
-          // If no profile exists, the webhook should have created it
-          // Let's wait a bit and try again
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          const { data: retryProfile, error: retryError } = await supabase
+          
+          // Create a new profile with default settings
+          const { data: newProfile, error: insertError } = await supabase
             .from('user_profiles')
-            .select('settings, id')
-            .eq('clerk_id', user.id)
+            .insert({
+              id: user.id,
+              settings: DEFAULT_SETTINGS,
+              working_days: [
+                { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
+                { dayOfWeek: '1', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                { dayOfWeek: '2', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
+              ],
+            })
+            .select()
             .single();
 
-          if (retryError) {
-            throw retryError;
+          if (insertError) {
+            throw insertError;
           }
 
-          if (retryProfile?.settings) {
-            setSettings(retryProfile.settings);
+          if (newProfile?.settings) {
+            setSettings(newProfile.settings);
           } else {
-            console.warn('No settings found after retry, using defaults');
+            console.warn('No settings in new profile, using defaults');
             setSettings(DEFAULT_SETTINGS);
           }
         } else {
@@ -93,7 +104,7 @@ export function useSettings() {
           event: '*',
           schema: 'public',
           table: 'user_profiles',
-          filter: `clerk_id=eq.${user.id}`,
+          filter: `id=eq.${user.id}`,
         },
         (payload: RealtimePostgresChangesPayload<{ settings: UserSettings }>) => {
           console.log('Received settings update:', payload);
@@ -109,7 +120,7 @@ export function useSettings() {
     return () => {
       channel.unsubscribe();
     };
-  }, [user?.id, clerkLoaded, supabase]);
+  }, [user?.id, clerkLoaded, supabase, session]);
 
   const updateSettings = useCallback(
     async (newSettings: Partial<UserSettings>) => {
@@ -127,7 +138,7 @@ export function useSettings() {
         const { data: existingProfile, error: fetchError } = await supabase
           .from('user_profiles')
           .select('settings')
-          .eq('clerk_id', user.id)
+          .eq('id', user.id)
           .single();
 
         if (fetchError) {
@@ -137,7 +148,7 @@ export function useSettings() {
             const { data: newProfile, error: insertError } = await supabase
               .from('user_profiles')
               .insert({
-                clerk_id: user.id,
+                id: user.id,
                 settings: DEFAULT_SETTINGS,
                 working_days: [
                   { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
@@ -172,21 +183,19 @@ export function useSettings() {
 
         console.log('Updating settings to:', updatedSettings);
 
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('user_profiles')
           .update({
             settings: updatedSettings,
             updated_at: new Date().toISOString(),
           })
-          .eq('clerk_id', user.id)
-          .select();
+          .eq('id', user.id);
 
         if (error) {
           console.error('Error updating profile:', error);
           throw error;
         }
 
-        console.log('Update response:', data);
         setSettings(updatedSettings);
         toast.success('Settings updated');
       } catch (error) {
