@@ -7,6 +7,13 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+    domains: ['localhost', 'taskmindai.vercel.app'],
+    unoptimized: process.env.NODE_ENV === 'development',
+  },
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'taskmindai.vercel.app'],
+    },
   },
 };
 

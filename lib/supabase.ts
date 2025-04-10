@@ -4,35 +4,29 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false, // Disable session persistence since we're using Clerk
-  },
-  global: {
-    // Set Supabase to use the current user's ID as the authenticated user
-    headers: {
-      Authorization: '', // Will be overridden by middleware
-    },
-  },
-});
+let supabaseInstance: ReturnType<typeof createClient> | null = null;
 
-// Helper to get Supabase instance with auth header
-export const getAuthenticatedSupabaseClient = (clerkToken?: string | null) => {
-  if (!clerkToken) return supabase;
-
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-    global: {
-      headers: {
-        Authorization: `Bearer ${clerkToken}`,
+export const getSupabaseClient = (clerkToken?: string | null) => {
+  if (!supabaseInstance || clerkToken) {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false, // Disable session persistence since we're using Clerk
       },
-    },
-  });
+      global: {
+        headers: {
+          Authorization: clerkToken ? `Bearer ${clerkToken}` : '',
+        },
+      },
+    });
+  }
+  return supabaseInstance;
 };
 
+// Export default instance for convenience
+export const supabase = getSupabaseClient();
+
+// Types
 export type WorkingDay = {
   dayOfWeek: string; // 0-6 for Sunday-Saturday
   startTime: string; // 24-hour format HH:mm

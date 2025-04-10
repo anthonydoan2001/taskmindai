@@ -16,20 +16,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <ClerkProvider>
-            <SessionProvider>
-              <SupabaseProvider>
+        <ClerkProvider>
+          <SupabaseProvider>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+              <SessionProvider>
                 <main className="min-h-screen bg-white dark:bg-gray-900">{children}</main>
-              </SupabaseProvider>
-            </SessionProvider>
-          </ClerkProvider>
-        </ThemeProvider>
+              </SessionProvider>
+            </ThemeProvider>
+          </SupabaseProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

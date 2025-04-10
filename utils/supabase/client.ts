@@ -1,16 +1,3 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createBrowserSupabaseClient } from './context';
 
-export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false, // We're using Clerk for auth
-    },
-  });
-}
+export const createClient = createBrowserSupabaseClient;
