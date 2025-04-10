@@ -26,96 +26,71 @@ async function syncUserWithSupabase(event: WebhookEvent) {
   
   // Handle user creation
   if (event.type === 'user.created') {
-    console.log('Creating new user in Supabase');
-    const { id, email_addresses, first_name, last_name, image_url } = event.data
+    console.log('Creating new user profile in Supabase');
+    const { id, email_addresses } = event.data
 
     const primaryEmail = email_addresses?.[0]?.email_address
 
-    // Create user in Supabase
-    const { data: userData, error: userError } = await supabase.from('users').insert({
-      clerk_id: id, // Use Clerk's ID as clerk_id
-      email: primaryEmail
-    }).select()
+    // Check if profile already exists
+    const { data: existingProfile, error: lookupError } = await supabase
+      .from('user_profiles')
+      .select()
+      .eq('clerk_id', id)
+      .single()
 
-    if (userError) {
-      console.error('Error creating user in Supabase:', userError)
-      console.error('Failed insert data:', { clerk_id: id, email: primaryEmail })
-      return new Response(JSON.stringify({ error: userError.message }), { 
+    if (lookupError && lookupError.code !== 'PGRST116') { // PGRST116 means no rows returned
+      console.error('Error looking up existing profile:', lookupError)
+      return new Response(JSON.stringify({ error: lookupError.message }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
-    // Create user profile
-    const { data: profileData, error: profileError } = await supabase.from('user_profiles').insert({
+    // If profile exists, just return success
+    if (existingProfile) {
+      console.log('User profile already exists in Supabase, skipping creation')
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Create user profile with default settings and working days
+    const { error: profileError } = await supabase.from('user_profiles').insert({
       id: randomUUID(),
       clerk_id: id,
-      bio: null,
-      location: null,
-      website_url: null,
-      timezone: 'UTC', // Default timezone
-      preferences: {} // Empty preferences object
-    }).select()
+      settings: {
+        militaryTime: false,
+        workType: 'full-time',
+        categories: []
+      },
+      working_days: [
+        { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
+        { dayOfWeek: '1', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+        { dayOfWeek: '2', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+        { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+        { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+        { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+        { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false }
+      ]
+    })
 
     if (profileError) {
       console.error('Error creating user profile in Supabase:', profileError)
-      console.error('Failed insert data:', { clerk_id: id, first_name, last_name, avatar_url: image_url })
       return new Response(JSON.stringify({ error: profileError.message }), { 
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       })
     }
 
-    console.log('Successfully created user and profile in Supabase:', { user: userData, profile: profileData });
-  }
-
-  // Handle user updates
-  if (event.type === 'user.updated') {
-    const { id, email_addresses, first_name, last_name, image_url } = event.data
-
-    const primaryEmail = email_addresses?.[0]?.email_address
-
-    // Update user email
-    const { error: userError } = await supabase
-      .from('users')
-      .update({ email: primaryEmail })
-      .eq('clerk_id', id)
-
-    if (userError) {
-      console.error('Error updating user in Supabase:', userError)
-      console.error('Failed update data:', { clerk_id: id, email: primaryEmail })
-      return new Response(JSON.stringify({ error: userError.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Update user profile
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .update({
-        // Only update timezone and preferences if needed in the future
-        // For now, we don't update anything from Clerk events
-      })
-      .eq('clerk_id', id)
-
-    if (profileError) {
-      console.error('Error updating user profile in Supabase:', profileError)
-      console.error('Failed update data:', { clerk_id: id, first_name, last_name, avatar_url: image_url })
-      return new Response(JSON.stringify({ error: profileError.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    console.log('Successfully updated user and profile in Supabase');
+    console.log('Successfully created user profile in Supabase');
   }
 
   // Handle user deletion
   if (event.type === 'user.deleted') {
     const { id } = event.data
 
-    // Delete user profile first (due to foreign key constraint)
+    // Delete user profile
     const { error: profileError } = await supabase
       .from('user_profiles')
       .delete()
@@ -130,22 +105,7 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       })
     }
 
-    // Delete user
-    const { error: userError } = await supabase
-      .from('users')
-      .delete()
-      .eq('clerk_id', id)
-
-    if (userError) {
-      console.error('Error deleting user in Supabase:', userError)
-      console.error('Failed deletion for clerk_id:', id)
-      return new Response(JSON.stringify({ error: userError.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-
-    console.log('Successfully deleted user and profile from Supabase');
+    console.log('Successfully deleted user profile from Supabase');
   }
 
   return new Response(JSON.stringify({ success: true }), {

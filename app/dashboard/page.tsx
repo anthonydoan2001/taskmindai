@@ -1,20 +1,62 @@
-import { UserButton } from "@clerk/nextjs";
+'use client';
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { PlusCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { DailyCheckIn } from "@/components/dashboard/daily-check-in";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [showCheckIn, setShowCheckIn] = useState(false);
+
+  useEffect(() => {
+    // Show daily check-in popup if not completed today
+    const lastCheckIn = localStorage.getItem('lastCheckIn');
+    const today = new Date().toDateString();
+    
+    if (lastCheckIn !== today) {
+      setShowCheckIn(true);
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <UserButton afterSignOutUrl="/" />
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Welcome to TaskMind AI!</h2>
-          <p className="text-gray-600">
-            You have successfully signed in. This is your protected dashboard page.
-          </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <Button onClick={() => router.push('/dashboard/task')}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Quick Add Task
+        </Button>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-[2fr_1fr]">
+        {/* Calendar will be added here */}
+        <Card className="p-6">
+          <div className="h-[600px] flex items-center justify-center border-2 border-dashed rounded-lg">
+            Calendar Component Coming Soon
+          </div>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Today's Focus</h2>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">No tasks scheduled for today</p>
+            </div>
+          </Card>
         </div>
       </div>
+
+      {showCheckIn && (
+        <DailyCheckIn 
+          onComplete={() => {
+            setShowCheckIn(false);
+            localStorage.setItem('lastCheckIn', new Date().toDateString());
+          }} 
+        />
+      )}
     </div>
   );
 } 

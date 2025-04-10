@@ -1,7 +1,30 @@
+'use client';
+
 import { SignIn } from "@clerk/nextjs"
+import { useAppSession } from "@/components/providers/session-provider"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { Loader2 } from "lucide-react"
 import Image from "next/image"
 
 export default function SignInPage() {
+  const { isLoading, isSignedIn } = useAppSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && isSignedIn) {
+      router.push("/dashboard");
+    }
+  }, [isLoading, isSignedIn, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen">
       {/* Left side - Sign In Form */}
