@@ -11,6 +11,7 @@ export default function ClerkClientProvider({ children }: { children: React.Reac
       appearance={{
         baseTheme: resolvedTheme === 'dark' ? dark : undefined,
       }}
+      signInFallbackRedirectUrl="/dashboard"
     >
       {children}
     </ClerkProvider>

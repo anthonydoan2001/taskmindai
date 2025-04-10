@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useSession } from '@clerk/nextjs';
 import { Database } from '@/types/supabase';
 
 type SupabaseContext = {
@@ -11,89 +11,72 @@ type SupabaseContext = {
 
 const Context = createContext<SupabaseContext | undefined>(undefined);
 
-// Create a singleton instance
-let supabaseInstance: SupabaseClient<Database> | null = null;
-let currentToken: string | null = null;
+let supabaseClientSingleton: SupabaseClient<Database> | null = null;
 
-function getSupabaseClient(supabaseToken: string | null = null) {
-  // Only create a new instance if the token changes
-  if (supabaseToken !== currentToken) {
-    currentToken = supabaseToken;
-    supabaseInstance = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+function getSupabaseClient() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  if (supabaseClientSingleton === null) {
+    supabaseClientSingleton = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       {
         auth: {
           autoRefreshToken: false,
           persistSession: false,
-          detectSessionInUrl: false,
         },
         global: {
-          headers: supabaseToken ? {
-            Authorization: `Bearer ${supabaseToken}`,
+          headers: {
             'Accept': 'application/json',
-            'Prefer': 'return=minimal',
-          } : {
-            'Accept': 'application/json',
-            'Prefer': 'return=minimal',
           },
         },
       },
     );
   }
 
-  return supabaseInstance || createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-      },
-      global: {
-        headers: {},
-      },
-    },
-  );
+  return supabaseClientSingleton;
 }
 
-export default function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const { getToken, userId } = useAuth();
-  const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+export default function SupabaseProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { getToken } = useAuth();
+  const { session } = useSession();
+  const [supabase] = useState(() => getSupabaseClient());
 
   useEffect(() => {
-    if (!userId) {
-      setSupabaseToken(null);
-      return;
-    }
-
-    const fetchToken = async () => {
+    const updateSupabaseAuthHeader = async () => {
       try {
-        const token = await getToken({ template: 'supabase' });
-        setSupabaseToken(token);
+        if (session) {
+          const token = await getToken({ template: 'supabase' });
+          if (token) {
+            supabase.auth.setSession({
+              access_token: token,
+              refresh_token: '',
+            });
+          }
+        }
       } catch (error) {
-        console.error('Error fetching Supabase token:', error);
-        setSupabaseToken(null);
+        console.error('Error updating Supabase auth header:', error);
       }
     };
 
-    fetchToken();
-  }, [userId, getToken]);
+    updateSupabaseAuthHeader();
+  }, [session, getToken, supabase.auth]);
 
-  const supabase = useMemo(() => getSupabaseClient(supabaseToken), [supabaseToken]);
+  const value = useMemo(() => ({ supabase }), [supabase]);
 
-  return (
-    <Context.Provider value={{ supabase }}>
-      {children}
-    </Context.Provider>
-  );
+  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
 export const useSupabase = () => {
   const context = useContext(Context);
   if (context === undefined) {
-    throw new Error('useSupabase must be used within a SupabaseProvider');
+    throw new Error('useSupabase must be used inside SupabaseProvider');
   }
   return context.supabase;
 };
