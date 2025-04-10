@@ -51,8 +51,20 @@ export const createErrorResponse = (
   ...(details && { details }),
 });
 
+interface DatabaseError extends Record<string, unknown> {
+  code?: string;
+  message?: string;
+  details?: unknown;
+}
+
+interface AuthError extends Record<string, unknown> {
+  message?: string;
+  code?: string;
+  details?: unknown;
+}
+
 // Error Handler Helper
-export const handleDatabaseError = (error: any): ErrorResponse => {
+export const handleDatabaseError = (error: DatabaseError): ErrorResponse => {
   // Supabase specific error codes
   switch (error?.code) {
     case '23503': // Foreign key violation
@@ -77,7 +89,7 @@ export const handleDatabaseError = (error: any): ErrorResponse => {
 };
 
 // Auth Error Handler Helper
-export const handleAuthError = (error: any): ErrorResponse => {
+export const handleAuthError = (error: AuthError): ErrorResponse => {
   if (error?.message?.includes('webhook')) {
     return createErrorResponse(
       AUTH_ERRORS.CLERK.WEBHOOK_VERIFICATION,

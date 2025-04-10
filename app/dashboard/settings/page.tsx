@@ -22,7 +22,8 @@ import { type WorkingDay } from '@/lib/supabase';
 import { useSettings } from '../../../hooks/useSettings';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ModeToggle } from '@/components/ui/mode-toggle';
+import { toast } from 'sonner';
+import { useDebouncedCallback } from 'use-debounce';
 
 // Loading states components
 const LoadingSkeleton = () => (
@@ -86,8 +87,8 @@ function SettingsContent() {
     categories: optimisticSettings?.categories ?? settings?.categories ?? [],
   };
 
-  // Wrap update functions with optimistic updates
-  const handleWorkingDayUpdate = async (dayOfWeek: string, updates: Partial<WorkingDay>) => {
+  // Debounced update functions
+  const debouncedHandleWorkingDayUpdate = useDebouncedCallback(async (dayOfWeek: string, updates: Partial<WorkingDay>) => {
     try {
       setIsUpdating(true);
       setError(null);
@@ -109,18 +110,19 @@ function SettingsContent() {
 
       setOptimisticWorkingDays(newWorkingDays);
       await updateWorkingDays(newWorkingDays);
+      toast.success('Working hours updated successfully');
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to update working hours. Please try again.',
-      );
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update working hours';
+      setError(errorMessage);
+      toast.error(errorMessage);
       // Revert optimistic update on error
       setOptimisticWorkingDays([]);
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, 500);
 
-  const handleSettingsUpdate = async (updates: Partial<typeof settings>) => {
+  const debouncedHandleSettingsUpdate = useDebouncedCallback(async (updates: Partial<typeof settings>) => {
     try {
       setIsUpdating(true);
       setError(null);
@@ -130,14 +132,21 @@ function SettingsContent() {
       };
       setOptimisticSettings(updatedSettings);
       await updateSettings(updatedSettings);
+      toast.success('Settings updated successfully');
     } catch (err) {
-      setError('Failed to update settings. Please try again.');
+      const errorMessage = 'Failed to update settings. Please try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
       // Revert optimistic update on error
       setOptimisticSettings(settings);
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, 500);
+
+  // Replace handleWorkingDayUpdate and handleSettingsUpdate with their debounced versions
+  const handleWorkingDayUpdate = debouncedHandleWorkingDayUpdate;
+  const handleSettingsUpdate = debouncedHandleSettingsUpdate;
 
   const LoadingCategoriesSkeleton = () => (
     <div className="space-y-4">
@@ -177,11 +186,6 @@ function SettingsContent() {
     </div>
   );
 
-  const getDayName = (dayOfWeek: string) => {
-    const date = new Date(2024, 0, parseInt(dayOfWeek) + 1);
-    return new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(date);
-  };
-
   const formatTime = (time: string) => {
     if (displaySettings.militaryTime) {
       return time;
@@ -193,24 +197,6 @@ function SettingsContent() {
     return `${displayHour}:00 ${period}`;
   };
 
-  const parseTime = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    return { hours, minutes };
-  };
-
-  const validateCategory = (category: string) => {
-    if (!category.trim()) {
-      setError('Category name cannot be empty');
-      return false;
-    }
-    if (displaySettings.categories.includes(category)) {
-      setError('Category already exists');
-      return false;
-    }
-    setError('');
-    return true;
-  };
-
   const addCategory = async () => {
     if (!newCategory.trim()) return;
     
@@ -220,8 +206,11 @@ function SettingsContent() {
       const updatedCategories = [...(optimisticSettings.categories || []), newCategory.trim()];
       await handleSettingsUpdate({ categories: updatedCategories });
       setNewCategory('');
+      toast.success('Category added successfully');
     } catch (err) {
-      setError('Failed to add category');
+      const errorMessage = 'Failed to add category';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsUpdating(false);
     }
@@ -233,8 +222,11 @@ function SettingsContent() {
       setError(null);
       const updatedCategories = optimisticSettings.categories?.filter(c => c !== category) || [];
       await handleSettingsUpdate({ categories: updatedCategories });
+      toast.success('Category removed successfully');
     } catch (err) {
-      setError('Failed to remove category');
+      const errorMessage = 'Failed to remove category';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsUpdating(false);
     }
@@ -318,10 +310,10 @@ function SettingsContent() {
         </Alert>
       )}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="working-hours">Working Hours</TabsTrigger>
+        <TabsList className="w-full justify-start">
+          <TabsTrigger value="general" disabled={settingsLoading}>General</TabsTrigger>
+          <TabsTrigger value="categories" disabled={settingsLoading}>Categories</TabsTrigger>
+          <TabsTrigger value="working-hours" disabled={workingDaysLoading}>Working Hours</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">

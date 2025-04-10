@@ -5,6 +5,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import { EventApi, EventInput, EventChangeArg, DateSelectArg } from '@fullcalendar/core';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -12,11 +13,11 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from './button';
 
 interface CalendarProps {
-  events?: any[];
+  events?: EventInput[];
   editable?: boolean;
-  onEventChange?: (info: any) => void;
-  onEventClick?: (info: any) => void;
-  onDateSelect?: (info: any) => void;
+  onEventChange?: (info: EventChangeArg) => void;
+  onEventClick?: (info: { event: EventApi }) => void;
+  onDateSelect?: (info: DateSelectArg) => void;
   onAddEvent?: () => void;
   className?: string;
 }
@@ -101,7 +102,7 @@ export function Calendar({
   onAddEvent,
   className,
 }: CalendarProps) {
-  const calendarRef = useRef<any>(null);
+  const calendarRef = useRef<FullCalendar>(null);
   const { theme } = useTheme();
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -109,7 +110,7 @@ export function Calendar({
     const calendar = calendarRef.current;
     if (calendar) {
       const api = calendar.getApi();
-      api.setOption('theme', theme === 'dark');
+      api.setOption('themeSystem', theme === 'dark' ? 'standard' : 'bootstrap5');
     }
   }, [theme]);
 
