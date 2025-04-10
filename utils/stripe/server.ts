@@ -124,7 +124,8 @@ export async function checkoutWithStripe(
 
 export async function createStripePortal(currentPath: string) {
   try {
-    const supabase = await createClerkSupabaseClientSsr();
+    const clerkAuth = await auth();
+    const supabase = await createClerkSupabaseClientSsr({ getToken: () => clerkAuth.getToken() });
     const {
       error,
       data: { user },
