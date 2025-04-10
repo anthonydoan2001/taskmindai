@@ -154,6 +154,29 @@ export interface Database {
           payment_method?: Json | null;
         };
       };
+      user_profiles: {
+        Row: {
+          id: string;
+          created_at: string | null;
+          updated_at: string | null;
+          settings: Json | null;
+          working_days: Json | null;
+        };
+        Insert: {
+          id: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+          settings?: Json | null;
+          working_days?: Json | null;
+        };
+        Update: {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+          settings?: Json | null;
+          working_days?: Json | null;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

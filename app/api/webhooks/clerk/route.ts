@@ -4,20 +4,7 @@ import { WebhookEvent } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
-interface UserProfile {
-  id: string;
-  settings: {
-    militaryTime: boolean;
-    workType: string;
-    categories: string[];
-  };
-  working_days: Array<{
-    dayOfWeek: string;
-    startTime: string;
-    endTime: string;
-    isWorkingDay: boolean;
-  }>;
-}
+type UserProfile = Database['public']['Tables']['user_profiles']['Insert'];
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,17 +57,17 @@ async function syncUserWithSupabase(event: WebhookEvent) {
         settings: {
           militaryTime: false,
           workType: 'full-time',
-          categories: ['Work', 'Personal', 'Errands'],
+          categories: ['Work', 'Personal', 'Errands']
         },
         working_days: [
-          { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-          { dayOfWeek: '1', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-          { dayOfWeek: '2', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-          { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-          { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-          { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-          { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-        ],
+          { day: 0, start: '09:00', end: '17:00', isWorking: false },
+          { day: 1, start: '09:00', end: '17:00', isWorking: true },
+          { day: 2, start: '09:00', end: '17:00', isWorking: true },
+          { day: 3, start: '09:00', end: '17:00', isWorking: true },
+          { day: 4, start: '09:00', end: '17:00', isWorking: true },
+          { day: 5, start: '09:00', end: '17:00', isWorking: true },
+          { day: 6, start: '09:00', end: '17:00', isWorking: false }
+        ]
       };
 
       // Create user profile with default settings
