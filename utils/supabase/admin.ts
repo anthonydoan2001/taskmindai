@@ -20,6 +20,62 @@ const supabaseAdmin = createClient<Database>(
 );
 
 /**
+ * Creates or retrieves a Stripe customer for the given user.
+ */
+export const createOrRetrieveCustomer = async ({
+  uuid,
+  email,
+  referral
+}: {
+  uuid: string;
+  email: string;
+  referral?: string;
+}) => {
+  // Check if the customer already exists in our mapping table
+  const { data: existingCustomer, error: queryError } = await supabaseAdmin
+    .from('customers')
+    .select('stripe_customer_id')
+    .eq('id', uuid)
+    .single();
+
+  if (queryError) {
+    throw queryError;
+  }
+
+  if (existingCustomer?.stripe_customer_id) {
+    return existingCustomer.stripe_customer_id;
+  }
+
+  // If not found, create a new customer in Stripe
+  const customerData: Stripe.CustomerCreateParams = {
+    email,
+    metadata: {
+      supabaseUUID: uuid
+    } as Stripe.Metadata
+  };
+
+  if (referral) {
+    customerData.metadata = {
+      ...customerData.metadata,
+      referral
+    };
+  }
+
+  const customer = await stripe.customers.create(customerData);
+
+  // Map the Stripe customer to the Supabase user
+  const { error: insertError } = await supabaseAdmin
+    .from('customers')
+    .insert([{ id: uuid, stripe_customer_id: customer.id }]);
+
+  if (insertError) {
+    throw insertError;
+  }
+
+  return customer.id;
+};
+
+/**
  * Copies the billing details from the payment method to the customer object.
  */
 const copyBillingDetailsToCustomer = async (
