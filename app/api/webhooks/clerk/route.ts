@@ -14,6 +14,12 @@ const supabase = createClient<Database>(
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      headers: {
+        'Accept': 'application/vnd.pgrst.object+json',
+        'Prefer': 'return=representation'
+      },
+    },
   },
 );
 
@@ -53,7 +59,7 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 
       // Create default profile data
       const defaultProfile: UserProfile = {
-        id: id,
+        id,
         settings: {
           militaryTime: false,
           workType: 'full-time',
@@ -73,7 +79,9 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       // Create user profile with default settings
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .insert(defaultProfile);
+        .insert(defaultProfile)
+        .select()
+        .single();
 
       if (profileError) {
         console.error('Error creating user profile in Supabase:', profileError);
@@ -106,7 +114,9 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       const { error: profileError } = await supabase
         .from('user_profiles')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (profileError) {
         console.error('Error deleting user profile in Supabase:', profileError);

@@ -116,8 +116,8 @@ export function createBrowserSupabaseClient() {
       },
       global: {
         headers: {
-          'Accept': 'application/json',
-          'Prefer': 'return=minimal'
+          'Accept': 'application/vnd.pgrst.object+json',
+          'Prefer': 'return=representation'
         },
       },
     },
@@ -144,11 +144,11 @@ export async function createClerkSupabaseClientSsr(auth: { getToken: (options?: 
         global: {
           headers: token ? {
             Authorization: `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Prefer': 'return=minimal',
+            'Accept': 'application/vnd.pgrst.object+json',
+            'Prefer': 'return=representation'
           } : {
-            'Accept': 'application/json',
-            'Prefer': 'return=minimal',
+            'Accept': 'application/vnd.pgrst.object+json',
+            'Prefer': 'return=representation'
           },
         },
       },
