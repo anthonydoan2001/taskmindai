@@ -1,15 +1,27 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// This example protects all routes including api/trpc routes
-// Please edit this to allow other routes to be public as needed.
-// See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring your middleware
-export default clerkMiddleware();
+// Define public routes
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/about',
+  '/pricing',
+  '/contact',
+  '/api/webhooks(.*)',
+]);
+
+export default clerkMiddleware((auth, req) => {
+  // Only require auth if not a public route
+  if (isPublicRoute(req)) return;
+
+  // If it's not public, Clerk will enforce auth automatically
+});
+
 
 export const config = {
   matcher: [
-    '/((?!.*\\..*|_next).*)', // exclude all files with extensions
-    '/', // include root
-    '/(api|trpc)(.*)', // include API routes
-    '/(dashboard|settings)(.*)', // include dashboard and settings routes
+    '/((?!_next|.*\\..*).*)', // excludes _next and static files
+    '/',                     // include root
+    '/(api|trpc)(.*)',       // include all api routes
+    '/(dashboard|settings)(.*)', // protect these areas
   ],
 };
