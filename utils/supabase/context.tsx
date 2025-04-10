@@ -8,14 +8,15 @@ import type { Database } from '@/types/supabase';
 const SupabaseContext = createContext<SupabaseClient<Database> | undefined>(undefined);
 
 export function SupabaseProvider({ children }: { children: ReactNode }) {
-  const session = useSession();
+  const { session } = useSession();
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
 
   useEffect(() => {
-    if (session.session) {
-      session.session.getToken({ template: 'supabase' }).then(setSupabaseToken);
+    if (session) {
+      // Get JWT with the custom template that matches Supabase's format
+      session.getToken().then(setSupabaseToken);
     }
-  }, [session.session]);
+  }, [session]);
 
   const supabase = useMemo(() => {
     return createClient<Database>(
@@ -84,6 +85,7 @@ export function createBrowserSupabaseClient() {
 // Server-side client creation with Clerk auth
 export async function createClerkSupabaseClientSsr(auth: { getToken: () => Promise<string | null> }) {
   const token = await auth.getToken();
+  
   return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
