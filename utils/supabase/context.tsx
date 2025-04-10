@@ -11,6 +11,49 @@ type SupabaseContext = {
 
 const Context = createContext<SupabaseContext | undefined>(undefined);
 
+// Create a singleton instance
+let supabaseInstance: SupabaseClient<Database> | null = null;
+let currentToken: string | null = null;
+
+function getSupabaseClient(supabaseToken: string | null = null) {
+  // Only create a new instance if the token changes
+  if (supabaseToken !== currentToken) {
+    currentToken = supabaseToken;
+    supabaseInstance = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false,
+        },
+        global: {
+          headers: supabaseToken ? {
+            Authorization: `Bearer ${supabaseToken}`,
+            'Accept': 'application/json',
+          } : {},
+        },
+      },
+    );
+  }
+
+  return supabaseInstance || createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        headers: {},
+      },
+    },
+  );
+}
+
 export default function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const { getToken, userId } = useAuth();
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
@@ -34,26 +77,7 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
     fetchToken();
   }, [userId, getToken]);
 
-  const supabase = useMemo(() => {
-    return createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-          detectSessionInUrl: false,
-        },
-        global: {
-          headers: supabaseToken ? {
-            Authorization: `Bearer ${supabaseToken}`,
-            'Accept': 'application/json',
-            'Prefer': 'return=representation'
-          } : {},
-        },
-      },
-    );
-  }, [supabaseToken]);
+  const supabase = useMemo(() => getSupabaseClient(supabaseToken), [supabaseToken]);
 
   return (
     <Context.Provider value={{ supabase }}>
