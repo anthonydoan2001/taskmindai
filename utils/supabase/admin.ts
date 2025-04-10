@@ -119,4 +119,53 @@ export const deletePriceRecord = async (price: Stripe.Price) => {
   if (error) throw error;
 };
 
+/**
+ * Creates/updates a product record in Supabase.
+ */
+export const upsertProductRecord = async (product: Stripe.Product) => {
+  const productData = {
+    id: product.id,
+    active: product.active,
+    name: product.name,
+    description: product.description,
+    image: product.images?.[0] ?? null,
+    metadata: product.metadata
+  };
+
+  const { error } = await supabaseAdmin
+    .from('products')
+    .upsert([productData]);
+  
+  if (error) throw error;
+  
+  return productData;
+};
+
+/**
+ * Creates/updates a price record in Supabase.
+ */
+export const upsertPriceRecord = async (price: Stripe.Price) => {
+  const priceData = {
+    id: price.id,
+    product_id: typeof price.product === 'string' ? price.product : '',
+    active: price.active,
+    currency: price.currency,
+    description: price.nickname ?? null,
+    type: price.type,
+    unit_amount: price.unit_amount ?? null,
+    interval: price.recurring?.interval ?? null,
+    interval_count: price.recurring?.interval_count ?? null,
+    trial_period_days: price.recurring?.trial_period_days ?? null,
+    metadata: price.metadata
+  };
+
+  const { error } = await supabaseAdmin
+    .from('prices')
+    .upsert([priceData]);
+  
+  if (error) throw error;
+  
+  return priceData;
+};
+
 export { supabaseAdmin }; 
