@@ -7,6 +7,19 @@ import type { Database } from '@/types/supabase';
 
 const SupabaseContext = createContext<SupabaseClient<Database> | undefined>(undefined);
 
+// Create a singleton instance for the browser client
+const browserClient = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  }
+);
+
 export function SupabaseProvider({ children }: { children: ReactNode }) {
   const { session } = useSession();
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
@@ -46,6 +59,8 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         global: {
           headers: supabaseToken ? {
             Authorization: `Bearer ${supabaseToken}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
           } : {},
         },
       },
@@ -71,9 +86,13 @@ export function useSupabase() {
 
 // Server-side client creation
 export function createServerSupabaseClient() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing required Supabase environment variables for server client');
+  }
+
   return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
     {
       auth: {
         autoRefreshToken: false,
@@ -97,6 +116,12 @@ export function createBrowserSupabaseClient() {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
+      },
+      global: {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
       },
     },
   );
@@ -122,6 +147,8 @@ export async function createClerkSupabaseClientSsr(auth: { getToken: (options?: 
         global: {
           headers: token ? {
             Authorization: `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
           } : {},
         },
       },
