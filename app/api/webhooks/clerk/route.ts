@@ -64,8 +64,8 @@ async function syncUserWithSupabase(event: WebhookEvent) {
         });
       }
 
-      // Create user profile with default settings and working days
-      const { error: profileError } = await supabase.from('user_profiles').insert({
+      // Create default profile data
+      const defaultProfile: UserProfile = {
         id: id,
         settings: {
           militaryTime: false,
@@ -81,7 +81,12 @@ async function syncUserWithSupabase(event: WebhookEvent) {
           { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
           { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
         ],
-      });
+      };
+
+      // Create user profile with default settings
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .insert(defaultProfile);
 
       if (profileError) {
         console.error('Error creating user profile in Supabase:', profileError);
