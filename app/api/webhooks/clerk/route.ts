@@ -65,19 +65,21 @@ async function syncUserWithSupabase(event: WebhookEvent) {
           workType: 'full-time',
           categories: ['Work', 'Personal', 'Errands']
         },
-        working_days: [
-          { day: 0, start: '09:00', end: '17:00', isWorking: false },
-          { day: 1, start: '09:00', end: '17:00', isWorking: true },
-          { day: 2, start: '09:00', end: '17:00', isWorking: true },
-          { day: 3, start: '09:00', end: '17:00', isWorking: true },
-          { day: 4, start: '09:00', end: '17:00', isWorking: true },
-          { day: 5, start: '09:00', end: '17:00', isWorking: true },
-          { day: 6, start: '09:00', end: '17:00', isWorking: false }
-        ]
+        working_days: {
+          monday: { start: '09:00', end: '17:00', isWorkingDay: true },
+          tuesday: { start: '09:00', end: '17:00', isWorkingDay: true },
+          wednesday: { start: '09:00', end: '17:00', isWorkingDay: true },
+          thursday: { start: '09:00', end: '17:00', isWorkingDay: true },
+          friday: { start: '09:00', end: '17:00', isWorkingDay: true },
+          saturday: { start: '09:00', end: '17:00', isWorkingDay: false },
+          sunday: { start: '09:00', end: '17:00', isWorkingDay: false }
+        }
       };
 
+      console.log('Attempting to create profile with data:', JSON.stringify(defaultProfile, null, 2));
+
       // Create user profile with default settings
-      const { error: profileError } = await supabase
+      const { data: newProfile, error: profileError } = await supabase
         .from('user_profiles')
         .insert(defaultProfile)
         .select()
@@ -85,14 +87,15 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 
       if (profileError) {
         console.error('Error creating user profile in Supabase:', profileError);
+        console.error('Profile data that failed:', JSON.stringify(defaultProfile, null, 2));
         return new Response(JSON.stringify({ error: profileError.message }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
-      console.log('Successfully created user profile in Supabase');
-      return new Response(JSON.stringify({ success: true }), {
+      console.log('Successfully created user profile in Supabase:', JSON.stringify(newProfile, null, 2));
+      return new Response(JSON.stringify({ success: true, profile: newProfile }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -111,7 +114,7 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 
     try {
       // Delete user profile
-      const { error: profileError } = await supabase
+      const { data: deletedProfile, error: profileError } = await supabase
         .from('user_profiles')
         .delete()
         .eq('id', id)
@@ -127,7 +130,11 @@ async function syncUserWithSupabase(event: WebhookEvent) {
         });
       }
 
-      console.log('Successfully deleted user profile from Supabase');
+      console.log('Successfully deleted user profile from Supabase:', JSON.stringify(deletedProfile, null, 2));
+      return new Response(JSON.stringify({ success: true, profile: deletedProfile }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     } catch (error) {
       console.error('Unexpected error during user deletion:', error);
       return new Response(JSON.stringify({ error: 'Internal server error during user deletion' }), {
