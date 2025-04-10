@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '../ui/sheet';
 import { useState } from 'react';
-import { UserButton } from '@clerk/nextjs';
+import { UserButton, SignedIn, SignedOut } from '@clerk/nextjs';
 
 const routes = [
   {
@@ -42,37 +42,47 @@ export function Navbar() {
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:ml-10 md:flex md:items-center md:space-x-8">
+            <nav className="hidden md:ml-8 md:flex md:space-x-4">
               {routes.map((route) => (
                 <Link
                   key={route.href}
                   href={route.href}
-                  className={cn('text-sm font-medium transition-colors hover:text-primary')}
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {route.label}
                 </Link>
               ))}
-            </div>
+            </nav>
           </div>
 
           {/* Right side items */}
           <div className="flex items-center space-x-4">
             <ModeToggle />
             <div className="hidden md:flex md:items-center md:space-x-4">
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    avatarBox: 'w-10 h-10',
-                  },
-                }}
-              />
+              <SignedIn>
+                <UserButton
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: 'w-10 h-10',
+                    },
+                  }}
+                />
+              </SignedIn>
+              <SignedOut>
+                <Link href="/sign-in">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button>Get Started</Button>
+                </Link>
+              </SignedOut>
             </div>
 
             {/* Mobile Navigation */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild className="md:hidden">
-                <Button variant="ghost" size="icon" className="md:hidden">
+                <Button variant="ghost" size="icon">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle menu</span>
                 </Button>
@@ -89,14 +99,24 @@ export function Navbar() {
                       {route.label}
                     </Link>
                   ))}
-                  <UserButton
-                    afterSignOutUrl="/"
-                    appearance={{
-                      elements: {
-                        avatarBox: 'w-10 h-10',
-                      },
-                    }}
-                  />
+                  <SignedIn>
+                    <UserButton
+                      afterSignOutUrl="/"
+                      appearance={{
+                        elements: {
+                          avatarBox: 'w-10 h-10',
+                        },
+                      }}
+                    />
+                  </SignedIn>
+                  <SignedOut>
+                    <Link href="/sign-in">
+                      <Button variant="ghost" className="w-full">Sign In</Button>
+                    </Link>
+                    <Link href="/sign-up">
+                      <Button className="w-full">Get Started</Button>
+                    </Link>
+                  </SignedOut>
                 </div>
               </SheetContent>
             </Sheet>

@@ -2,7 +2,7 @@
 
 import { useAuth, useSession } from '@clerk/nextjs';
 import { createContext, useContext, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { AUTH_ERRORS } from '@/lib/errors';
 
 type SessionContextType = {
@@ -17,20 +17,24 @@ const SessionContext = createContext<SessionContextType>({
   sessionId: null,
 });
 
+const publicRoutes = ['/', '/about', '/features', '/pricing', '/sign-in', '/sign-up'];
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { session, isLoaded: sessionLoaded } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   const isLoading = !authLoaded || !sessionLoaded;
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(`${route}/`));
 
   useEffect(() => {
     // Handle session expiration
-    if (authLoaded && sessionLoaded && !isSignedIn && !isLoading) {
+    if (!isLoading && !isSignedIn && !isPublicRoute) {
       console.warn(AUTH_ERRORS.CLERK.SESSION_EXPIRED);
       router.push('/sign-in');
     }
-  }, [authLoaded, sessionLoaded, isSignedIn, isLoading, router]);
+  }, [authLoaded, sessionLoaded, isSignedIn, isLoading, router, pathname, isPublicRoute]);
 
   return (
     <SessionContext.Provider

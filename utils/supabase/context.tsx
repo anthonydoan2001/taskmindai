@@ -18,15 +18,17 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
         auth: {
           autoRefreshToken: false,
           persistSession: false,
+          detectSessionInUrl: false,
+          storage: undefined,
         },
         global: {
           headers: {
-            Authorization: session?.getToken ? `Bearer ${session.getToken()}` : '',
+            Authorization: `Bearer ${session?.id || ''}`,
           },
         },
       },
     );
-  }, [session]);
+  }, [session?.id]);
 
   return <SupabaseContext.Provider value={supabase}>{children}</SupabaseContext.Provider>;
 }
