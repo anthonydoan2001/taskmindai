@@ -10,7 +10,7 @@ export function createClient() {
 
   return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-      persistSession: false // We're using Clerk for auth
-    }
+      persistSession: false, // We're using Clerk for auth
+    },
   });
-} 
+}

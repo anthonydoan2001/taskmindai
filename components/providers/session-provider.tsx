@@ -1,9 +1,9 @@
 'use client';
 
-import { useAuth, useSession } from "@clerk/nextjs";
-import { createContext, useContext, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { AUTH_ERRORS } from "@/lib/errors";
+import { useAuth, useSession } from '@clerk/nextjs';
+import { createContext, useContext, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { AUTH_ERRORS } from '@/lib/errors';
 
 type SessionContextType = {
   isLoading: boolean;
@@ -28,7 +28,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // Handle session expiration
     if (authLoaded && sessionLoaded && !isSignedIn && !isLoading) {
       console.warn(AUTH_ERRORS.CLERK.SESSION_EXPIRED);
-      router.push("/sign-in");
+      router.push('/sign-in');
     }
   }, [authLoaded, sessionLoaded, isSignedIn, isLoading, router]);
 
@@ -48,7 +48,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 export const useAppSession = () => {
   const context = useContext(SessionContext);
   if (context === undefined) {
-    throw new Error("useAppSession must be used within a SessionProvider");
+    throw new Error('useAppSession must be used within a SessionProvider');
   }
   return context;
-}; 
+};

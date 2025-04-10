@@ -5,7 +5,7 @@ import {
   upsertPriceRecord,
   manageSubscriptionStatusChange,
   deleteProductRecord,
-  deletePriceRecord
+  deletePriceRecord,
 } from '@/utils/supabase/admin';
 
 const relevantEvents = new Set([
@@ -18,7 +18,7 @@ const relevantEvents = new Set([
   'checkout.session.completed',
   'customer.subscription.created',
   'customer.subscription.updated',
-  'customer.subscription.deleted'
+  'customer.subscription.deleted',
 ]);
 
 export async function POST(req: Request) {
@@ -28,8 +28,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    if (!sig || !webhookSecret)
-      return new Response('Webhook secret not found.', { status: 400 });
+    if (!sig || !webhookSecret) return new Response('Webhook secret not found.', { status: 400 });
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
     console.log(`🔔  Webhook received: ${event.type}`);
   } catch (err: any) {
@@ -61,7 +60,7 @@ export async function POST(req: Request) {
           await manageSubscriptionStatusChange(
             subscription.id,
             subscription.customer as string,
-            event.type === 'customer.subscription.created'
+            event.type === 'customer.subscription.created',
           );
           break;
         case 'checkout.session.completed':
@@ -71,7 +70,7 @@ export async function POST(req: Request) {
             await manageSubscriptionStatusChange(
               subscriptionId as string,
               checkoutSession.customer as string,
-              true
+              true,
             );
           }
           break;
@@ -80,12 +79,9 @@ export async function POST(req: Request) {
       }
     } catch (error) {
       console.log(error);
-      return new Response(
-        'Webhook handler failed. View your Next.js function logs.',
-        {
-          status: 400
-        }
-      );
+      return new Response('Webhook handler failed. View your Next.js function logs.', {
+        status: 400,
+      });
     }
   } else {
     return new Response(`Unsupported event type: ${event.type}`);

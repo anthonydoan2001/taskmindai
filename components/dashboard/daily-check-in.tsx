@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,9 +8,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { useState } from 'react';
 
 interface DailyCheckInProps {
   onComplete: () => void;
@@ -18,7 +18,7 @@ interface DailyCheckInProps {
 
 export function DailyCheckIn({ onComplete }: DailyCheckInProps) {
   const [open, setOpen] = useState(true);
-  const [goals, setGoals] = useState("");
+  const [goals, setGoals] = useState('');
 
   const handleComplete = () => {
     // Here you would typically save the goals to your backend
@@ -32,7 +32,8 @@ export function DailyCheckIn({ onComplete }: DailyCheckInProps) {
         <DialogHeader>
           <DialogTitle>Daily Check-In</DialogTitle>
           <DialogDescription>
-            What would you like to accomplish today? Setting clear goals helps you stay focused and productive.
+            What would you like to accomplish today? Setting clear goals helps you stay focused and
+            productive.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -49,4 +50,4 @@ export function DailyCheckIn({ onComplete }: DailyCheckInProps) {
       </DialogContent>
     </Dialog>
   );
-} 
+}

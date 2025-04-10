@@ -1,7 +1,7 @@
 'use client';
 
-import { Calendar } from "@/components/ui/calendar";
-import { Card } from "@/components/ui/card";
+import { Calendar } from '@/components/ui/calendar';
+import { Card } from '@/components/ui/card';
 
 export function ViewCalendar() {
   // TODO: Replace with actual events from your data source
@@ -20,10 +20,7 @@ export function ViewCalendar() {
 
   return (
     <Card className="p-4">
-      <Calendar 
-        events={events}
-        editable={false}
-      />
+      <Calendar events={events} editable={false} />
     </Card>
   );
-} 
+}

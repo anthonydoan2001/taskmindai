@@ -1,4 +1,4 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware } from '@clerk/nextjs/server';
 
 // This example protects all routes including api/trpc routes
 // Please edit this to allow other routes to be public as needed.
@@ -7,9 +7,9 @@ export default clerkMiddleware();
 
 export const config = {
   matcher: [
-    "/((?!.*\\..*|_next).*)", // exclude all files with extensions
-    "/",                       // include root
-    "/(api|trpc)(.*)",        // include API routes
-    "/(dashboard|settings)(.*)" // include dashboard and settings routes
-  ]
+    '/((?!.*\\..*|_next).*)', // exclude all files with extensions
+    '/', // include root
+    '/(api|trpc)(.*)', // include API routes
+    '/(dashboard|settings)(.*)', // include dashboard and settings routes
+  ],
 };

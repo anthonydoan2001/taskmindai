@@ -1,23 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
-import { MoveRight, PhoneCall } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Image from 'next/image'
+import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { MoveRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 
 function Hero() {
-  const [titleNumber, setTitleNumber] = useState(0)
-  const titles = useMemo(() => ['Modern', 'Full-stack', 'Secure', 'Scalable', 'Powerful'], [])
+  const [titleNumber, setTitleNumber] = useState(0);
+  const titles = useMemo(() => ['Modern', 'Full-stack', 'Secure', 'Scalable', 'Powerful'], []);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (titleNumber === titles.length - 1) {
-        setTitleNumber(0)
+        setTitleNumber(0);
       } else {
-        setTitleNumber(titleNumber + 1)
+        setTitleNumber(titleNumber + 1);
       }
-    }, 2000)
-    return () => clearTimeout(timeoutId)
-  }, [titleNumber, titles])
+    }, 2000);
+    return () => clearTimeout(timeoutId);
+  }, [titleNumber, titles]);
 
   return (
     <div className="w-full">
@@ -77,7 +77,7 @@ function Hero() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export { Hero }
+export { Hero };

@@ -1,18 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar } from "@/components/ui/calendar";
-import { toast } from "sonner";
+import { Calendar } from '@/components/ui/calendar';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface CalendarEvent {
   id: string;
@@ -47,28 +47,28 @@ const eventColors = {
   standupMeeting: {
     backgroundColor: '#F3F4F6',
     textColor: '#374151',
-    borderLeft: '3px solid #374151'
+    borderLeft: '3px solid #374151',
   },
   houseInspection: {
     backgroundColor: '#FEF3C7',
     textColor: '#92400E',
-    borderLeft: '3px solid #92400E'
+    borderLeft: '3px solid #92400E',
   },
   deepWork: {
     backgroundColor: '#DBEAFE',
     textColor: '#1E40AF',
-    borderLeft: '3px solid #1E40AF'
+    borderLeft: '3px solid #1E40AF',
   },
   lunch: {
     backgroundColor: '#D1FAE5',
     textColor: '#065F46',
-    borderLeft: '3px solid #065F46'
+    borderLeft: '3px solid #065F46',
   },
   meeting: {
     backgroundColor: '#FEE2E2',
     textColor: '#991B1B',
-    borderLeft: '3px solid #991B1B'
-  }
+    borderLeft: '3px solid #991B1B',
+  },
 };
 
 export function EditCalendar() {
@@ -80,7 +80,7 @@ export function EditCalendar() {
       end: new Date(new Date().setHours(9, 30)),
       backgroundColor: eventColors.standupMeeting.backgroundColor,
       textColor: eventColors.standupMeeting.textColor,
-      classNames: ['border-l-[3px] border-l-gray-700']
+      classNames: ['border-l-[3px] border-l-gray-700'],
     },
     {
       id: '2',
@@ -89,7 +89,7 @@ export function EditCalendar() {
       end: new Date(new Date().setHours(11, 30)),
       backgroundColor: eventColors.houseInspection.backgroundColor,
       textColor: eventColors.houseInspection.textColor,
-      classNames: ['border-l-[3px] border-l-amber-600']
+      classNames: ['border-l-[3px] border-l-amber-600'],
     },
     {
       id: '3',
@@ -98,7 +98,7 @@ export function EditCalendar() {
       end: new Date(new Date().setHours(15, 0)),
       backgroundColor: eventColors.deepWork.backgroundColor,
       textColor: eventColors.deepWork.textColor,
-      classNames: ['border-l-[3px] border-l-blue-700']
+      classNames: ['border-l-[3px] border-l-blue-700'],
     },
     {
       id: '4',
@@ -107,30 +107,30 @@ export function EditCalendar() {
       end: new Date(new Date().setHours(13, 0)),
       backgroundColor: eventColors.lunch.backgroundColor,
       textColor: eventColors.lunch.textColor,
-      classNames: ['border-l-[3px] border-l-emerald-700']
-    }
+      classNames: ['border-l-[3px] border-l-emerald-700'],
+    },
   ]);
 
   const [eventModal, setEventModal] = useState<EventModalState>({
     isOpen: false,
-    mode: 'create'
+    mode: 'create',
   });
 
   const [newEventTitle, setNewEventTitle] = useState('');
 
   const handleEventChange = (info: EventChangeInfo) => {
     const { event } = info;
-    setEvents(currentEvents => 
-      currentEvents.map(e => 
-        e.id === event.id 
+    setEvents((currentEvents) =>
+      currentEvents.map((e) =>
+        e.id === event.id
           ? {
               ...e,
               title: event.title,
               start: event.start,
               end: event.end,
             }
-          : e
-      )
+          : e,
+      ),
     );
     toast.success('Event updated');
   };
@@ -139,7 +139,7 @@ export function EditCalendar() {
     setEventModal({
       isOpen: true,
       mode: 'edit',
-      event
+      event,
     });
     setNewEventTitle(event.title);
   };
@@ -148,7 +148,7 @@ export function EditCalendar() {
     setEventModal({
       isOpen: true,
       mode: 'create',
-      selectedDates: info
+      selectedDates: info,
     });
     setNewEventTitle('');
   };
@@ -167,17 +167,15 @@ export function EditCalendar() {
         end: eventModal.selectedDates.end,
         backgroundColor: eventColors.meeting.backgroundColor,
         textColor: eventColors.meeting.textColor,
-        classNames: ['border-l-[3px] border-l-red-700']
+        classNames: ['border-l-[3px] border-l-red-700'],
       };
-      setEvents(currentEvents => [...currentEvents, newEvent]);
+      setEvents((currentEvents) => [...currentEvents, newEvent]);
       toast.success('Event created');
     } else if (eventModal.mode === 'edit' && eventModal.event) {
-      setEvents(currentEvents =>
-        currentEvents.map(e =>
-          e.id === eventModal.event?.id
-            ? { ...e, title: newEventTitle }
-            : e
-        )
+      setEvents((currentEvents) =>
+        currentEvents.map((e) =>
+          e.id === eventModal.event?.id ? { ...e, title: newEventTitle } : e,
+        ),
       );
       toast.success('Event updated');
     }
@@ -188,7 +186,7 @@ export function EditCalendar() {
 
   return (
     <div className="h-full">
-      <Calendar 
+      <Calendar
         events={events}
         editable={true}
         onEventChange={handleEventChange}
@@ -196,8 +194,8 @@ export function EditCalendar() {
         onDateSelect={handleDateSelect}
       />
 
-      <Dialog 
-        open={eventModal.isOpen} 
+      <Dialog
+        open={eventModal.isOpen}
         onOpenChange={(open) => {
           if (!open) {
             setEventModal({ isOpen: false, mode: 'create' });
@@ -243,4 +241,4 @@ export function EditCalendar() {
       </Dialog>
     </div>
   );
-} 
+}

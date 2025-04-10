@@ -1,10 +1,10 @@
 'use client';
 
-import { UserButton } from "@clerk/nextjs";
-import { Bell, HelpCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useUser } from "@clerk/nextjs";
-import { ModeToggle } from "@/components/ui/mode-toggle";
+import { UserButton } from '@clerk/nextjs';
+import { Bell, HelpCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useUser } from '@clerk/nextjs';
+import { ModeToggle } from '@/components/ui/mode-toggle';
 
 export function Header() {
   const { user } = useUser();
@@ -14,9 +14,9 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            Welcome back,{" "}
+            Welcome back,{' '}
             <span className="font-medium text-gray-700 dark:text-gray-200">
-              {user?.firstName || "User"}
+              {user?.firstName || 'User'}
             </span>
           </span>
         </div>
@@ -34,4 +34,4 @@ export function Header() {
       </div>
     </header>
   );
-} 
+}

@@ -1,45 +1,45 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useUser } from '@clerk/nextjs'
-import { toast } from 'sonner'
-import { type RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import { useSupabase } from '@/utils/supabase/context'
-import type { UserSettings } from '@/lib/supabase'
+import { useCallback, useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { toast } from 'sonner';
+import { type RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { useSupabase } from '@/utils/supabase/context';
+import type { UserSettings } from '@/lib/supabase';
 
 const DEFAULT_SETTINGS: UserSettings = {
   militaryTime: false,
   workType: 'full-time',
-  categories: ['Work', 'Personal', 'Errands']
-}
+  categories: ['Work', 'Personal', 'Errands'],
+};
 
 export function useSettings() {
-  const { user, isLoaded: clerkLoaded } = useUser()
-  const supabase = useSupabase()
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS)
-  const [loading, setLoading] = useState(true)
+  const { user, isLoaded: clerkLoaded } = useUser();
+  const supabase = useSupabase();
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Wait for Clerk to load
-    if (!clerkLoaded) return
+    if (!clerkLoaded) return;
 
     // If Clerk is loaded but no user, we're not authenticated
     if (!user?.id) {
-      setLoading(false)
-      return
+      setLoading(false);
+      return;
     }
 
     const fetchSettings = async () => {
       try {
-        console.log('Fetching settings for user:', user.id)
+        console.log('Fetching settings for user:', user.id);
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('settings, id')
           .eq('clerk_id', user.id)
-          .single()
+          .single();
 
         if (profileError) {
-          console.log('Profile error:', profileError)
+          console.log('Profile error:', profileError);
           if (profileError.code === 'PGRST116') {
-            console.log('Creating new profile with settings:', DEFAULT_SETTINGS)
+            console.log('Creating new profile with settings:', DEFAULT_SETTINGS);
             const { data: newProfile, error: insertError } = await supabase
               .from('user_profiles')
               .insert({
@@ -52,40 +52,40 @@ export function useSettings() {
                   { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
                   { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
                   { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false }
-                ]
+                  { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
+                ],
               })
               .select()
-              .single()
+              .single();
 
             if (insertError) {
-              console.error('Error creating profile:', insertError)
-              throw insertError
+              console.error('Error creating profile:', insertError);
+              throw insertError;
             }
 
-            console.log('New profile created:', newProfile)
-            setSettings(DEFAULT_SETTINGS)
+            console.log('New profile created:', newProfile);
+            setSettings(DEFAULT_SETTINGS);
           } else {
-            throw profileError
+            throw profileError;
           }
         } else {
-          console.log('Existing profile found:', profile)
+          console.log('Existing profile found:', profile);
           if (profile?.settings) {
-            setSettings(profile.settings)
+            setSettings(profile.settings);
           } else {
-            console.warn('Profile found but no settings, using defaults')
-            setSettings(DEFAULT_SETTINGS)
+            console.warn('Profile found but no settings, using defaults');
+            setSettings(DEFAULT_SETTINGS);
           }
         }
       } catch (error) {
-        console.error('Error in fetchSettings:', error)
-        toast.error('Failed to load settings')
+        console.error('Error in fetchSettings:', error);
+        toast.error('Failed to load settings');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchSettings()
+    fetchSettings();
 
     // Subscribe to changes
     const channel = supabase
@@ -96,111 +96,114 @@ export function useSettings() {
           event: '*',
           schema: 'public',
           table: 'user_profiles',
-          filter: `clerk_id=eq.${user.id}`
+          filter: `clerk_id=eq.${user.id}`,
         },
         (payload: RealtimePostgresChangesPayload<{ settings: UserSettings }>) => {
-          console.log('Received settings update:', payload)
-          const newData = payload.new as { settings: UserSettings } | null
+          console.log('Received settings update:', payload);
+          const newData = payload.new as { settings: UserSettings } | null;
           if (newData?.settings) {
-            setSettings(newData.settings)
+            setSettings(newData.settings);
           }
-        }
+        },
       )
-      .subscribe()
+      .subscribe();
 
     return () => {
-      channel.unsubscribe()
-    }
-  }, [user?.id, clerkLoaded])
+      channel.unsubscribe();
+    };
+  }, [user?.id, clerkLoaded]);
 
-  const updateSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
-    if (!user?.id) {
-      console.error('No user ID available')
-      toast.error('You must be logged in to update settings')
-      return
-    }
+  const updateSettings = useCallback(
+    async (newSettings: Partial<UserSettings>) => {
+      if (!user?.id) {
+        console.error('No user ID available');
+        toast.error('You must be logged in to update settings');
+        return;
+      }
 
-    setLoading(true)
-    try {
-      // Try to get or create profile
-      let currentSettings = DEFAULT_SETTINGS
+      setLoading(true);
+      try {
+        // Try to get or create profile
+        let currentSettings = DEFAULT_SETTINGS;
 
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('settings')
-        .eq('clerk_id', user.id)
-        .single()
+        const { data: existingProfile, error: fetchError } = await supabase
+          .from('user_profiles')
+          .select('settings')
+          .eq('clerk_id', user.id)
+          .single();
 
-      if (fetchError) {
-        if (fetchError.code === 'PGRST116') {
-          // Profile doesn't exist, create it
-          console.log('Creating new profile for settings update')
-          const { data: newProfile, error: insertError } = await supabase
-            .from('user_profiles')
-            .insert({
-              clerk_id: user.id,
-              settings: DEFAULT_SETTINGS,
-              working_days: [
-                { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-                { dayOfWeek: '1', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '2', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false }
-              ]
-            })
-            .select()
-            .single()
+        if (fetchError) {
+          if (fetchError.code === 'PGRST116') {
+            // Profile doesn't exist, create it
+            console.log('Creating new profile for settings update');
+            const { data: newProfile, error: insertError } = await supabase
+              .from('user_profiles')
+              .insert({
+                clerk_id: user.id,
+                settings: DEFAULT_SETTINGS,
+                working_days: [
+                  { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
+                  { dayOfWeek: '1', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                  { dayOfWeek: '2', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                  { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                  { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                  { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
+                  { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
+                ],
+              })
+              .select()
+              .single();
 
-          if (insertError) {
-            console.error('Error creating profile:', insertError)
-            throw insertError
+            if (insertError) {
+              console.error('Error creating profile:', insertError);
+              throw insertError;
+            }
+            console.log('New profile created:', newProfile);
+          } else {
+            console.error('Error fetching profile:', fetchError);
+            throw fetchError;
           }
-          console.log('New profile created:', newProfile)
         } else {
-          console.error('Error fetching profile:', fetchError)
-          throw fetchError
+          currentSettings = existingProfile.settings || DEFAULT_SETTINGS;
         }
-      } else {
-        currentSettings = existingProfile.settings || DEFAULT_SETTINGS
+
+        const updatedSettings = {
+          ...currentSettings,
+          ...newSettings,
+        };
+
+        console.log('Updating settings to:', updatedSettings);
+
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .update({
+            settings: updatedSettings,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('clerk_id', user.id)
+          .select();
+
+        if (error) {
+          console.error('Error updating profile:', error);
+          throw error;
+        }
+
+        console.log('Update response:', data);
+        setSettings(updatedSettings);
+        toast.success('Settings updated');
+      } catch (error) {
+        console.error('Error updating settings:', error);
+        toast.error('Failed to update settings');
+      } finally {
+        setLoading(false);
       }
-
-      const updatedSettings = {
-        ...currentSettings,
-        ...newSettings
-      }
-
-      console.log('Updating settings to:', updatedSettings)
-
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .update({
-          settings: updatedSettings,
-          updated_at: new Date().toISOString()
-        })
-        .eq('clerk_id', user.id)
-        .select()
-
-      if (error) {
-        console.error('Error updating profile:', error)
-        throw error
-      }
-
-      console.log('Update response:', data)
-      setSettings(updatedSettings)
-      toast.success('Settings updated')
-    } catch (error) {
-      console.error('Error updating settings:', error)
-      toast.error('Failed to update settings')
-    } finally {
-      setLoading(false)
-    }
-  }, [user?.id])
+    },
+    [user?.id],
+  );
 
   return {
     settings,
     loading: loading || !clerkLoaded,
-    updateSettings
-  }
-} 
+    updateSettings,
+  };
+}

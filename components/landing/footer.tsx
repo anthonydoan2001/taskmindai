@@ -1,37 +1,37 @@
-import Link from "next/link"
+import Link from 'next/link';
 
 const footerLinks = [
   {
-    title: "Product",
+    title: 'Product',
     links: [
-      { label: "Features", href: "#features" },
-      { label: "How it Works", href: "#how-it-works" },
-      { label: "Pricing", href: "/pricing" },
+      { label: 'Features', href: '#features' },
+      { label: 'How it Works', href: '#how-it-works' },
+      { label: 'Pricing', href: '/pricing' },
     ],
   },
   {
-    title: "Company",
+    title: 'Company',
     links: [
-      { label: "About", href: "/about" },
-      { label: "Contact", href: "/contact" },
-      { label: "Blog", href: "/blog" },
+      { label: 'About', href: '/about' },
+      { label: 'Contact', href: '/contact' },
+      { label: 'Blog', href: '/blog' },
     ],
   },
   {
-    title: "Legal",
+    title: 'Legal',
     links: [
-      { label: "Privacy Policy", href: "/privacy" },
-      { label: "Terms of Service", href: "/terms" },
-      { label: "Cookie Policy", href: "/cookies" },
+      { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'Terms of Service', href: '/terms' },
+      { label: 'Cookie Policy', href: '/cookies' },
     ],
   },
-]
+];
 
 export function Footer() {
   return (
-    <footer className="py-12 bg-muted/50">
-      <div className="container px-4 mx-auto">
-        <div className="grid gap-8 mb-8 md:grid-cols-4">
+    <footer className="bg-muted/50 py-12">
+      <div className="container mx-auto px-4">
+        <div className="mb-8 grid gap-8 md:grid-cols-4">
           <div>
             <h3 className="mb-4 text-lg font-semibold">TaskMind AI</h3>
             <p className="mb-4 text-sm text-muted-foreground">
@@ -40,15 +40,13 @@ export function Footer() {
           </div>
           {footerLinks.map((group) => (
             <div key={group.title}>
-              <h4 className="mb-4 text-sm font-semibold uppercase">
-                {group.title}
-              </h4>
+              <h4 className="mb-4 text-sm font-semibold uppercase">{group.title}</h4>
               <ul className="space-y-2">
                 {group.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {link.label}
                     </Link>
@@ -58,7 +56,7 @@ export function Footer() {
             </div>
           ))}
         </div>
-        <div className="pt-8 border-t border-border">
+        <div className="border-t border-border pt-8">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} TaskMind AI. All rights reserved.
@@ -66,13 +64,13 @@ export function Footer() {
             <div className="flex items-center gap-4">
               <Link
                 href="/login"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 Sign In
               </Link>
               <Link
                 href="/signup"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 Get Started
               </Link>
@@ -81,5 +79,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  )
-} 
+  );
+}

@@ -1,32 +1,33 @@
-import { BarChart3, Calendar, RefreshCw } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { BarChart3, Calendar, RefreshCw } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import Image from 'next/image';
 
 const features = [
   {
-    title: "AI-Generated Calendar",
-    description: "Smart scheduling that adapts to your work style and energy levels",
+    title: 'AI-Generated Calendar',
+    description: 'Smart scheduling that adapts to your work style and energy levels',
     icon: Calendar,
-    preview: "/images/calendar-feature.png",
+    preview: '/images/calendar-feature.png',
   },
   {
-    title: "Task Analytics",
-    description: "Visualize your productivity patterns and optimize your schedule",
+    title: 'Task Analytics',
+    description: 'Visualize your productivity patterns and optimize your schedule',
     icon: BarChart3,
-    preview: "/images/analytics-feature.png",
+    preview: '/images/analytics-feature.png',
   },
   {
-    title: "Smart Rescheduling",
-    description: "Automatically adjust your schedule when plans change",
+    title: 'Smart Rescheduling',
+    description: 'Automatically adjust your schedule when plans change',
     icon: RefreshCw,
-    preview: "/images/reschedule-feature.png",
+    preview: '/images/reschedule-feature.png',
   },
-]
+];
 
 export function FeaturesPreview() {
   return (
-    <section className="py-20 bg-background">
-      <div className="container px-4 mx-auto">
-        <div className="max-w-2xl mx-auto mb-16 text-center">
+    <section className="bg-background py-20">
+      <div className="container mx-auto px-4">
+        <div className="mx-auto mb-16 max-w-2xl text-center">
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             Powerful Features for Better Planning
           </h2>
@@ -38,30 +39,43 @@ export function FeaturesPreview() {
           {features.map((feature) => (
             <Card key={feature.title} className="overflow-hidden">
               <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex items-center justify-center w-10 h-10 text-primary bg-primary/10 rounded-lg">
-                    <feature.icon className="w-5 h-5" />
+                <div className="mb-4 flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <feature.icon className="h-5 w-5" />
                   </div>
                   <h3 className="text-xl font-semibold">{feature.title}</h3>
                 </div>
-                <p className="mb-6 text-muted-foreground">
-                  {feature.description}
-                </p>
+                <p className="mb-6 text-muted-foreground">{feature.description}</p>
               </div>
               <CardContent className="p-0">
                 <div className="relative aspect-video bg-muted">
                   {/* Placeholder for feature preview image */}
-                  <img
+                  <Image
                     src={feature.preview}
                     alt={feature.title}
-                    className="object-cover w-full h-full"
+                    className="h-full w-full object-cover"
+                    width={300}
+                    height={200}
                   />
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+        <div className="relative mx-auto max-w-6xl px-6 lg:px-8">
+          <div className="mt-16 flow-root sm:mt-24">
+            <div className="-m-2 rounded-xl bg-gray-900/5 p-2 ring-1 ring-inset ring-gray-900/10 lg:-m-4 lg:rounded-2xl lg:p-4">
+              <Image
+                src="/dashboard-preview.jpg"
+                alt="App screenshot"
+                width={2432}
+                height={1442}
+                className="rounded-md shadow-2xl ring-1 ring-gray-900/10"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </section>
-  )
-} 
+  );
+}

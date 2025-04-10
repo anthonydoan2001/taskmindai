@@ -4,7 +4,7 @@ import type { Database } from '@/types/supabase';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27.acacia'
+  apiVersion: '2025-01-27.acacia',
 });
 
 // Initialize Supabase admin client
@@ -16,7 +16,7 @@ const supabaseAdmin = createClient<Database>(
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
+  },
 );
 
 /**
@@ -25,7 +25,7 @@ const supabaseAdmin = createClient<Database>(
 export const createOrRetrieveCustomer = async ({
   uuid,
   email,
-  referral
+  referral,
 }: {
   uuid: string;
   email: string;
@@ -50,14 +50,14 @@ export const createOrRetrieveCustomer = async ({
   const customerData: Stripe.CustomerCreateParams = {
     email,
     metadata: {
-      supabaseUUID: uuid
-    } as Stripe.Metadata
+      supabaseUUID: uuid,
+    } as Stripe.Metadata,
   };
 
   if (referral) {
     customerData.metadata = {
       ...customerData.metadata,
-      referral
+      referral,
     };
   }
 
@@ -78,20 +78,20 @@ export const createOrRetrieveCustomer = async ({
 /**
  * Copies the billing details from the payment method to the customer object.
  */
-const copyBillingDetailsToCustomer = async (
-  uuid: string,
-  payment_method: Stripe.PaymentMethod
-) => {
+const copyBillingDetailsToCustomer = async (uuid: string, payment_method: Stripe.PaymentMethod) => {
   const customer = payment_method.customer as string;
   const { name, phone, address } = payment_method.billing_details;
   if (!name || !phone || !address) return;
-  
+
   //@ts-ignore
   await stripe.customers.update(customer, { name, phone, address });
-  await supabaseAdmin.from('users').update({
-    billing_address: { ...address },
-    payment_method: { ...payment_method[payment_method.type] }
-  }).eq('id', uuid);
+  await supabaseAdmin
+    .from('users')
+    .update({
+      billing_address: { ...address },
+      payment_method: { ...payment_method[payment_method.type] },
+    })
+    .eq('id', uuid);
 };
 
 /**
@@ -100,7 +100,7 @@ const copyBillingDetailsToCustomer = async (
 export const manageSubscriptionStatusChange = async (
   subscriptionId: string,
   customerId: string,
-  createAction = false
+  createAction = false,
 ) => {
   // Get customer's UUID from mapping table
   const { data: customerData } = await supabaseAdmin
@@ -112,7 +112,7 @@ export const manageSubscriptionStatusChange = async (
   if (!customerData?.id) throw new Error('No customer found.');
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-    expand: ['default_payment_method']
+    expand: ['default_payment_method'],
   });
 
   // Update the subscription status in Supabase
@@ -131,14 +131,13 @@ export const manageSubscriptionStatusChange = async (
     created: new Date(subscription.created * 1000),
     ended_at: subscription.ended_at ? new Date(subscription.ended_at * 1000) : null,
     trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000) : null,
-    trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
+    trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
   };
 
   if (createAction) {
     await supabaseAdmin.from('subscriptions').upsert([subscriptionData]);
   } else {
-    await supabaseAdmin.from('subscriptions').update(subscriptionData)
-      .eq('id', subscription.id);
+    await supabaseAdmin.from('subscriptions').update(subscriptionData).eq('id', subscription.id);
   }
 
   // If there's a payment method, copy billing details to customer
@@ -146,7 +145,7 @@ export const manageSubscriptionStatusChange = async (
     //@ts-ignore
     await copyBillingDetailsToCustomer(
       customerData.id,
-      subscription.default_payment_method as Stripe.PaymentMethod
+      subscription.default_payment_method as Stripe.PaymentMethod,
     );
   }
 };
@@ -155,11 +154,8 @@ export const manageSubscriptionStatusChange = async (
  * Deletes a product record from Supabase.
  */
 export const deleteProductRecord = async (product: Stripe.Product) => {
-  const { error } = await supabaseAdmin
-    .from('products')
-    .delete()
-    .eq('id', product.id);
-  
+  const { error } = await supabaseAdmin.from('products').delete().eq('id', product.id);
+
   if (error) throw error;
 };
 
@@ -167,11 +163,8 @@ export const deleteProductRecord = async (product: Stripe.Product) => {
  * Deletes a price record from Supabase.
  */
 export const deletePriceRecord = async (price: Stripe.Price) => {
-  const { error } = await supabaseAdmin
-    .from('prices')
-    .delete()
-    .eq('id', price.id);
-  
+  const { error } = await supabaseAdmin.from('prices').delete().eq('id', price.id);
+
   if (error) throw error;
 };
 
@@ -185,15 +178,13 @@ export const upsertProductRecord = async (product: Stripe.Product) => {
     name: product.name,
     description: product.description,
     image: product.images?.[0] ?? null,
-    metadata: product.metadata
+    metadata: product.metadata,
   };
 
-  const { error } = await supabaseAdmin
-    .from('products')
-    .upsert([productData]);
-  
+  const { error } = await supabaseAdmin.from('products').upsert([productData]);
+
   if (error) throw error;
-  
+
   return productData;
 };
 
@@ -212,16 +203,14 @@ export const upsertPriceRecord = async (price: Stripe.Price) => {
     interval: price.recurring?.interval ?? null,
     interval_count: price.recurring?.interval_count ?? null,
     trial_period_days: price.recurring?.trial_period_days ?? null,
-    metadata: price.metadata
+    metadata: price.metadata,
   };
 
-  const { error } = await supabaseAdmin
-    .from('prices')
-    .upsert([priceData]);
-  
+  const { error } = await supabaseAdmin.from('prices').upsert([priceData]);
+
   if (error) throw error;
-  
+
   return priceData;
 };
 
-export { supabaseAdmin }; 
+export { supabaseAdmin };

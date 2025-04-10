@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
@@ -35,45 +35,41 @@ function CalendarHeader({ onAddEvent, date, onNavigate }: CalendarHeaderProps) {
   return (
     <div className="flex items-center justify-between px-6 py-4">
       <div className="flex items-center gap-6">
-        <div className="flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden min-w-[70px]">
-          <div className="uppercase text-xs font-medium text-white bg-black dark:bg-gray-900 w-full text-center py-1">
+        <div className="flex min-w-[70px] flex-col overflow-hidden rounded-lg bg-white shadow-md dark:bg-gray-800">
+          <div className="w-full bg-black py-1 text-center text-xs font-medium uppercase text-white dark:bg-gray-900">
             {format(today, 'MMM')}
           </div>
-          <div className="text-4xl font-medium text-center py-2">
-            {format(today, 'd')}
-          </div>
+          <div className="py-2 text-center text-4xl font-medium">{format(today, 'd')}</div>
         </div>
         <div className="flex flex-col">
-          <div className="text-base font-medium">
-            {format(date, 'MMMM yyyy')}
-          </div>
-          <div className="text-xs text-muted-foreground mt-0.5">
+          <div className="text-base font-medium">{format(date, 'MMMM yyyy')}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
             {format(monthStart, 'MMM d, yyyy')} - {format(monthEnd, 'MMM d, yyyy')}
           </div>
         </div>
       </div>
-      
+
       <div className="flex items-center gap-2">
-        <div className="flex items-center rounded-lg border border-border overflow-hidden">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+        <div className="flex items-center overflow-hidden rounded-lg border border-border">
+          <Button
+            variant="ghost"
+            size="sm"
             className="rounded-none border-r"
             onClick={() => onNavigate?.('prev')}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="rounded-none px-3"
             onClick={() => onNavigate?.('today')}
           >
             Today
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="rounded-none border-l"
             onClick={() => onNavigate?.('next')}
           >
@@ -81,14 +77,14 @@ function CalendarHeader({ onAddEvent, date, onNavigate }: CalendarHeaderProps) {
           </Button>
         </div>
 
-        <div className="flex items-center rounded-lg border border-border overflow-hidden">
+        <div className="flex items-center overflow-hidden rounded-lg border border-border">
           <Button variant="ghost" size="sm" className="rounded-none px-3">
             Month view
           </Button>
         </div>
 
         <Button onClick={onAddEvent} size="sm" className="bg-black text-white hover:bg-black/90">
-          <Plus className="h-4 w-4 mr-1" />
+          <Plus className="mr-1 h-4 w-4" />
           Add event
         </Button>
       </div>
@@ -103,7 +99,7 @@ export function Calendar({
   onEventClick,
   onDateSelect,
   onAddEvent,
-  className
+  className,
 }: CalendarProps) {
   const calendarRef = useRef<any>(null);
   const { theme } = useTheme();
@@ -133,12 +129,8 @@ export function Calendar({
   };
 
   return (
-    <div className={cn("flex flex-col h-full rounded-lg bg-card overflow-hidden", className)}>
-      <CalendarHeader 
-        onAddEvent={onAddEvent} 
-        date={currentDate}
-        onNavigate={handleNavigate}
-      />
+    <div className={cn('flex h-full flex-col overflow-hidden rounded-lg bg-card', className)}>
+      <CalendarHeader onAddEvent={onAddEvent} date={currentDate} onNavigate={handleNavigate} />
       <div className="flex-1 overflow-hidden">
         <style jsx global>{`
           .fc {
@@ -198,7 +190,7 @@ export function Calendar({
             font-weight: 500;
             padding: 0.25rem;
           }
-          .fc-theme-standard td, 
+          .fc-theme-standard td,
           .fc-theme-standard th {
             border: 1px solid var(--fc-border-color);
           }

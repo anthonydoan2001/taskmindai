@@ -7,10 +7,12 @@ This document outlines the backend structure for TaskMind AI, providing a clear 
 The backend is designed using a modern, modular approach that leverages a range of specialized technologies and frameworks. Key points include:
 
 - **Design Patterns:**
+
   - Modular and layered architecture ensuring each component (authentication, scheduling, calendar sync, etc.) is isolated for easy maintenance and updates.
   - Use of type-safe API communication with tRPC to bridge the frontend and backend seamlessly.
 
 - **Frameworks & Services:**
+
   - **Supabase:** Provides PostgreSQL 15 database with built-in security features such as Row-Level Security (RLS) and real-time updates.
   - **Prisma ORM:** Simplifies interaction with the SQL database through a clean, type-safe API.
   - **tRPC:** Provides end-to-end type safety in API interactions, ensuring that the communication between the frontend and backend is consistent and error-free.
@@ -29,6 +31,7 @@ The backend is designed using a modern, modular approach that leverages a range 
 TaskMind AI uses a robust and secure database setup:
 
 - **Primary Database:**
+
   - **PostgreSQL 15** (hosted via Supabase) is the primary relational database.
   - **Key Practices:**
     - Adoption of Row-Level Security (RLS) to enforce data access permissions at the database level.
@@ -139,6 +142,7 @@ CREATE TABLE analytics (
 The API is built with a type-safe approach using tRPC, allowing fluid communication between the frontend and backend:
 
 - **API Type:**
+
   - REST-like endpoints via tRPC that directly avoid manual route definitions.
   - Endpoints designed with clear responsibilities to handle actions such as user authentication, calendar synchronization, task management, and analytics tracking.
 
@@ -155,6 +159,7 @@ The API is built with a type-safe approach using tRPC, allowing fluid communicat
 The backend leverages a modern cloud-based hosting environment to ensure high availability and robust performance:
 
 - **Primary Hosting Provider:**
+
   - **Supabase:** Hosts the PostgreSQL database and offers real-time data functionality.
   - **Vercel:** Often used alongside Next.js for deploying the serverless functions and API endpoints in a scalable manner.
 
@@ -177,14 +182,17 @@ Numerous infrastructure components work together to enhance performance and prov
 Security is integrated at multiple layers of the backend to protect user data and ensure regulatory compliance:
 
 - **Authentication & Authorization:**
+
   - Clerk handles secure user authentication, social logins, MFA, and session management.
   - Role-based access controls are enforced both at the application and database levels (using Supabase RLS).
 
 - **Data Encryption:**
+
   - End-to-end encryption of sensitive data including field-level encryption for highly sensitive information.
   - Regular encrypted backups to safeguard against data loss.
 
 - **OAuth & External Integrations:**
+
   - Google Calendar synchronization uses the minimum required OAuth scopes to ensure privacy.
 
 - **Additional Measures:**
@@ -196,6 +204,7 @@ Security is integrated at multiple layers of the backend to protect user data an
 Maintaining a healthy backend system means using proactive monitoring and regular maintenance strategies:
 
 - **Monitoring Tools:**
+
   - Supabase provides monitoring for the PostgreSQL database and real-time events.
   - Vercel and other logging tools (e.g., Sentry, Logflare) track serverless function performance and error rates.
   - Custom dashboards for tracking analytics and AI interactions.

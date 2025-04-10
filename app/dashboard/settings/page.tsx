@@ -1,34 +1,28 @@
-"use client";
+'use client';
 
-import { useState, useEffect, Suspense } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useState, useEffect, Suspense } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, AlertCircle, Loader2 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useWorkingDays } from "../../../hooks/useWorkingDays";
-import { type WorkingDay } from "@/lib/supabase";
-import { useSettings } from "../../../hooks/useSettings";
-import { useSearchParams } from "next/navigation";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ModeToggle } from "@/components/ui/mode-toggle";
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { X, AlertCircle, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useWorkingDays } from '../../../hooks/useWorkingDays';
+import { type WorkingDay } from '@/lib/supabase';
+import { useSettings } from '../../../hooks/useSettings';
+import { useSearchParams } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ModeToggle } from '@/components/ui/mode-toggle';
 
 // Loading states components
 const LoadingSkeleton = () => (
@@ -56,20 +50,11 @@ const LoadingSkeleton = () => (
 // Create a separate client component for the settings content
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const defaultTab = searchParams.get("tab") || "general";
+  const defaultTab = searchParams.get('tab') || 'general';
   const [activeTab, setActiveTab] = useState(defaultTab);
-  const [newCategory, setNewCategory] = useState("");
-  const [categoryError, setCategoryError] = useState("");
-  const { 
-    workingDays, 
-    loading: workingDaysLoading, 
-    updateWorkingDays 
-  } = useWorkingDays();
-  const { 
-    settings, 
-    loading: settingsLoading, 
-    updateSettings 
-  } = useSettings();
+  const [newCategory, setNewCategory] = useState('');
+  const { workingDays, loading: workingDaysLoading, updateWorkingDays } = useWorkingDays();
+  const { settings, loading: settingsLoading, updateSettings } = useSettings();
 
   // Add optimistic state updates
   const [optimisticWorkingDays, setOptimisticWorkingDays] = useState<WorkingDay[]>([]);
@@ -82,7 +67,7 @@ function SettingsContent() {
   // Add loading state for button actions
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Add error state
+  // Add error state and display
   const [error, setError] = useState<string | null>(null);
 
   // Update optimistic settings when server state changes
@@ -98,7 +83,7 @@ function SettingsContent() {
   const displaySettings = {
     militaryTime: optimisticSettings?.militaryTime ?? settings?.militaryTime ?? false,
     workType: optimisticSettings?.workType ?? settings?.workType ?? 'full-time',
-    categories: optimisticSettings?.categories ?? settings?.categories ?? []
+    categories: optimisticSettings?.categories ?? settings?.categories ?? [],
   };
 
   // Wrap update functions with optimistic updates
@@ -106,7 +91,7 @@ function SettingsContent() {
     try {
       setIsUpdating(true);
       setError(null);
-      const newWorkingDays = displayWorkingDays.map(day => {
+      const newWorkingDays = displayWorkingDays.map((day) => {
         if (day.dayOfWeek === dayOfWeek) {
           return { ...day, ...updates };
         }
@@ -125,7 +110,9 @@ function SettingsContent() {
       setOptimisticWorkingDays(newWorkingDays);
       await updateWorkingDays(newWorkingDays);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update working hours. Please try again.');
+      setError(
+        err instanceof Error ? err.message : 'Failed to update working hours. Please try again.',
+      );
       // Revert optimistic update on error
       setOptimisticWorkingDays([]);
     } finally {
@@ -139,7 +126,7 @@ function SettingsContent() {
       setError(null);
       const updatedSettings = {
         ...settings,
-        ...updates
+        ...updates,
       };
       setOptimisticSettings(updatedSettings);
       await updateSettings(updatedSettings);
@@ -184,14 +171,14 @@ function SettingsContent() {
           </div>
         </div>
       ))}
-      <div className="pt-4 border-t">
+      <div className="border-t pt-4">
         <Skeleton className="h-5 w-40" />
       </div>
     </div>
   );
 
   const getDayName = (dayOfWeek: string) => {
-    const date = new Date(2024, 0, parseInt(dayOfWeek) + 1); // January 2024 starting from Monday
+    const date = new Date(2024, 0, parseInt(dayOfWeek) + 1);
     return new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(date);
   };
 
@@ -207,40 +194,50 @@ function SettingsContent() {
   };
 
   const parseTime = (time: string) => {
-    if (displaySettings.militaryTime) {
-      return time;
-    }
-    const [timeStr, period] = time.split(' ');
-    let [hour] = timeStr.split(':').map(Number);
-    if (period === 'PM' && hour !== 12) hour += 12;
-    if (period === 'AM' && hour === 12) hour = 0;
-    return `${hour.toString().padStart(2, '0')}:00`;
+    const [hours, minutes] = time.split(':').map(Number);
+    return { hours, minutes };
   };
 
   const validateCategory = (category: string) => {
     if (!category.trim()) {
-      setCategoryError("Category name cannot be empty");
+      setError('Category name cannot be empty');
       return false;
     }
     if (displaySettings.categories.includes(category)) {
-      setCategoryError("Category already exists");
+      setError('Category already exists');
       return false;
     }
-    setCategoryError("");
+    setError('');
     return true;
   };
 
-  const addCategory = () => {
-    if (validateCategory(newCategory)) {
-      updateSettings({ categories: [...displaySettings.categories, newCategory] });
-      setNewCategory("");
+  const addCategory = async () => {
+    if (!newCategory.trim()) return;
+    
+    try {
+      setIsUpdating(true);
+      setError(null);
+      const updatedCategories = [...(optimisticSettings.categories || []), newCategory.trim()];
+      await handleSettingsUpdate({ categories: updatedCategories });
+      setNewCategory('');
+    } catch (err) {
+      setError('Failed to add category');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
-  const removeCategory = (category: string) => {
-    updateSettings({ 
-      categories: displaySettings.categories.filter((c) => c !== category) 
-    });
+  const removeCategory = async (category: string) => {
+    try {
+      setIsUpdating(true);
+      setError(null);
+      const updatedCategories = optimisticSettings.categories?.filter(c => c !== category) || [];
+      await handleSettingsUpdate({ categories: updatedCategories });
+    } catch (err) {
+      setError('Failed to remove category');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const calculateTotalWeeklyHours = (workingDays: WorkingDay[]) => {
@@ -254,7 +251,7 @@ function SettingsContent() {
       try {
         const [startHour] = day.startTime.split(':').map(Number);
         const [endHour] = day.endTime.split(':').map(Number);
-        
+
         if (!isNaN(startHour) && !isNaN(endHour)) {
           total += Math.max(0, endHour - startHour);
         }
@@ -270,22 +267,25 @@ function SettingsContent() {
     try {
       setIsUpdating(true);
       setError(null);
-      
+
       // Update settings optimistically
       const updatedSettings = {
         ...displaySettings,
-        workType: value
+        workType: value,
       };
       handleSettingsUpdate(updatedSettings);
-      
+
       // Update working hours optimistically
-      const newWorkingDays = displayWorkingDays.map(day => ({
+      const newWorkingDays = displayWorkingDays.map((day) => ({
         ...day,
-        isWorkingDay: value === 'full-time' ? ['1', '2', '3', '4', '5'].includes(day.dayOfWeek) : day.isWorkingDay,
+        isWorkingDay:
+          value === 'full-time'
+            ? ['1', '2', '3', '4', '5'].includes(day.dayOfWeek)
+            : day.isWorkingDay,
         startTime: value === 'full-time' ? '09:00' : day.startTime,
-        endTime: value === 'full-time' ? '17:00' : day.endTime
+        endTime: value === 'full-time' ? '17:00' : day.endTime,
       }));
-      
+
       setOptimisticWorkingDays(newWorkingDays);
       await updateWorkingDays(newWorkingDays);
     } catch (err) {
@@ -309,12 +309,15 @@ function SettingsContent() {
   ] as const;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">Settings</h2>
-        <ModeToggle />
-      </div>
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+    <div className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
@@ -325,9 +328,7 @@ function SettingsContent() {
           <Card>
             <CardHeader>
               <CardTitle>General Settings</CardTitle>
-              <CardDescription>
-                Configure your general preferences
-              </CardDescription>
+              <CardDescription>Configure your general preferences</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {settingsLoading ? (
@@ -387,51 +388,35 @@ function SettingsContent() {
                       value={newCategory}
                       onChange={(e) => {
                         setNewCategory(e.target.value);
-                        setCategoryError('');
+                        setError('');
                       }}
                       placeholder="New category"
                       className="flex-1"
                       disabled={isUpdating}
                     />
-                    <Button 
-                      onClick={() => {
-                        if (validateCategory(newCategory)) {
-                          const newCategories = [...displaySettings.categories, newCategory];
-                          handleSettingsUpdate({ categories: newCategories });
-                          setNewCategory("");
-                        }
-                      }}
+                    <Button
+                      onClick={addCategory}
                       disabled={!newCategory.trim() || isUpdating}
                       type="button"
                     >
-                      {isUpdating ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        'Add'
-                      )}
+                      {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
                     </Button>
                   </div>
-                  {categoryError && (
+                  {error && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{categoryError}</AlertDescription>
+                      <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
                   <div className="space-y-2">
                     {displaySettings.categories.map((category) => (
-                      <div
-                        key={category}
-                        className="flex items-center justify-between"
-                      >
+                      <div key={category} className="flex items-center justify-between">
                         <span>{category}</span>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            const newCategories = displaySettings.categories.filter(
-                              (c) => c !== category
-                            );
-                            handleSettingsUpdate({ categories: newCategories });
+                            removeCategory(category);
                           }}
                           disabled={isUpdating}
                           type="button"
@@ -455,9 +440,7 @@ function SettingsContent() {
           <Card>
             <CardHeader>
               <CardTitle>Working Hours</CardTitle>
-              <CardDescription>
-                Set your working hours for each day
-              </CardDescription>
+              <CardDescription>Set your working hours for each day</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {workingDaysLoading ? (
@@ -469,14 +452,11 @@ function SettingsContent() {
                       dayOfWeek: value,
                       isWorkingDay: false,
                       startTime: '09:00',
-                      endTime: '17:00'
+                      endTime: '17:00',
                     };
 
                     return (
-                      <div
-                        key={value}
-                        className="flex items-center justify-between"
-                      >
+                      <div key={value} className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={day.isWorkingDay}
@@ -484,7 +464,7 @@ function SettingsContent() {
                               handleWorkingDayUpdate(value, {
                                 isWorkingDay: checked,
                                 startTime: day.startTime,
-                                endTime: day.endTime
+                                endTime: day.endTime,
                               });
                             }}
                             disabled={isUpdating}
@@ -498,7 +478,7 @@ function SettingsContent() {
                               onValueChange={(time) => {
                                 handleWorkingDayUpdate(value, {
                                   startTime: time,
-                                  endTime: day.endTime
+                                  endTime: day.endTime,
                                 });
                               }}
                               disabled={isUpdating}
@@ -508,10 +488,7 @@ function SettingsContent() {
                               </SelectTrigger>
                               <SelectContent>
                                 {Array.from({ length: 24 }, (_, i) => (
-                                  <SelectItem 
-                                    key={i} 
-                                    value={`${i.toString().padStart(2, '0')}:00`}
-                                  >
+                                  <SelectItem key={i} value={`${i.toString().padStart(2, '0')}:00`}>
                                     {formatTime(`${i.toString().padStart(2, '0')}:00`)}
                                   </SelectItem>
                                 ))}
@@ -523,7 +500,7 @@ function SettingsContent() {
                               onValueChange={(time) => {
                                 handleWorkingDayUpdate(value, {
                                   startTime: day.startTime,
-                                  endTime: time
+                                  endTime: time,
                                 });
                               }}
                               disabled={isUpdating}
@@ -533,10 +510,7 @@ function SettingsContent() {
                               </SelectTrigger>
                               <SelectContent>
                                 {Array.from({ length: 24 }, (_, i) => (
-                                  <SelectItem 
-                                    key={i} 
-                                    value={`${i.toString().padStart(2, '0')}:00`}
-                                  >
+                                  <SelectItem key={i} value={`${i.toString().padStart(2, '0')}:00`}>
                                     {formatTime(`${i.toString().padStart(2, '0')}:00`)}
                                   </SelectItem>
                                 ))}
@@ -547,7 +521,7 @@ function SettingsContent() {
                       </div>
                     );
                   })}
-                  <div className="pt-4 border-t">
+                  <div className="border-t pt-4">
                     <p className="text-sm text-muted-foreground">
                       Total weekly hours: {calculateTotalWeeklyHours(displayWorkingDays)}
                     </p>
@@ -569,4 +543,4 @@ export default function SettingsPage() {
       <SettingsContent />
     </Suspense>
   );
-} 
+}

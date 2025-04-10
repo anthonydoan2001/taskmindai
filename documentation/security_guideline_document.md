@@ -7,11 +7,13 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ## 1. Project Setup & Onboarding
 
 - **Repository & Version Control**
+
   - Initiate a Git repository with branch protections.
   - Use a lockfile (e.g., package-lock.json or yarn.lock) to manage dependency versions.
   - Integrate a CI/CD pipeline with automated security scans (SCA) for dependency vulnerabilities.
 
 - **Environment Configuration & Secrets Management**
+
   - Store configuration variables securely using environment variables and a secrets manager (e.g., AWS Secrets Manager or HashiCorp Vault).
   - Follow secure defaults; ensure debug mode is disabled in production.
 
@@ -24,11 +26,13 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ## 2. Frontend Development
 
 - **Technology Setup**
+
   - Use Next.js 14 (App Router) with TypeScript for type safety.
   - Integrate Tailwind CSS, Shadcn UI, Radix UI, and Framer Motion for a clean, responsive design.
   - Utilize TanStack Query for efficient client-side data management.
 
 - **User Interface & Experience**
+
   - Design modular, responsive components and a minimalistic dashboard layout.
   - Implement smooth animations and transitions with Framer Motion.
   - Ensure accessibility, i18n, and localization best practices.
@@ -43,16 +47,19 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ## 3. Backend & API Development
 
 - **Architecture Setup**
+
   - Use Supabase with PostgreSQL 15, implementing Row-Level Security (RLS) for granular data access control.
   - Set up Prisma ORM for secure, parameterized interactions with the PostgreSQL database.
   - Implement tRPC for type-safe API communication, ensuring strict input validation.
 
 - **Authentication & Authorization**
+
   - Integrate Clerk for robust user authentication (OAuth, social login, MFA, session management).
   - Enforce role-based access control (RBAC) for all endpoints, ensuring solo users have full access while planning optional collaboration features.
   - Use JWT with secure algorithms, expiration, and refresh token mechanisms. Validate tokens server-side on every protected endpoint.
 
 - **Data Encryption & Privacy**
+
   - Encrypt sensitive data both at-rest (using AES-256) and in-transit (TLS 1.2+).
   - Implement field-level encryption where PII is stored.
   - Maintain activity logs and ensure compliance with GDPR/CCPA for privacy requirements.
@@ -71,10 +78,12 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ### A. AI Scheduling
 
 - **Input Handling & Processing**
+
   - Accept natural language input and rigorously sanitize it to prevent injection attacks.
   - Integrate OpenAI GPT-4 with clear rate-limiting; ensure API keys remain secure.
 
 - **Flexible Scheduling**
+
   - Enable drag-and-drop functionalities and dynamic reordering.
   - Maintain an audit trail for changes with revision history and undo/redo features.
 
@@ -85,6 +94,7 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ### B. Calendar Synchronization & Interactive Calendar
 
 - **Google Calendar Sync**
+
   - Use Google API with minimal scopes required to perform two-way sync.
   - Validate redirect URLs and use allow-lists to prevent open redirects and misconfigurations.
 
@@ -114,6 +124,7 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ### F. AI Usage Limits & Subscriptions
 
 - **Subscription Integration**
+
   - Integrate Stripe for managing subscriptions and payments with well-defined premium tiers.
   - Use middleware checks for enforcing feature access based on user roles and subscription status.
 
@@ -125,11 +136,13 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ## 5. Infrastructure & Deployment
 
 - **Server Configuration & Hardening**
+
   - Secure server environments: disable unused ports, configure firewalls, and enforce least privilege on all accounts.
   - Utilize TLS 1.2+ and disable outdated protocols.
   - Ensure regular encrypted backups and enable point-in-time recovery.
 
 - **Monitoring & Logging**
+
   - Implement detailed activity logs while masking sensitive information.
   - Utilize monitoring tools to detect anomalies and potential breaches.
 
@@ -142,10 +155,12 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ## 6. Final Testing & Auditing
 
 - **Penetration Testing & Code Review**
+
   - Perform manual and automated tests on authentication, RLS, and API endpoints.
   - Engage third-party security audits if necessary.
 
 - **User Acceptance Testing (UAT)**
+
   - Validate that all planned features meet functional and security requirements.
   - Conduct end-to-end testing for calendar sync, notifications, and subscription flows.
 
@@ -158,6 +173,7 @@ This document outlines a step-by-step, security- and privacy-focused implementat
 ## 7. Maintenance & Future Enhancements
 
 - **Regular Updates**
+
   - Monitor dependency vulnerabilities and apply timely patches.
   - Update configuration for new security recommendations and compliance requirements.
 
