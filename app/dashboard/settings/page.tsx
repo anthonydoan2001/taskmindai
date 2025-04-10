@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,7 +30,31 @@ import { useSearchParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 
-export default function SettingsPage() {
+// Loading states components
+const LoadingSkeleton = () => (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-5 w-32" />
+      <Skeleton className="h-6 w-10" />
+    </div>
+    <div className="space-y-4">
+      <Skeleton className="h-5 w-24" />
+      <div className="flex space-x-8">
+        <div className="flex items-center space-x-2">
+          <Skeleton className="h-4 w-4 rounded-full" />
+          <Skeleton className="h-5 w-20" />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Skeleton className="h-4 w-4 rounded-full" />
+          <Skeleton className="h-5 w-20" />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Create a separate client component for the settings content
+function SettingsContent() {
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get("tab") || "general";
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -127,29 +151,6 @@ export default function SettingsPage() {
       setIsUpdating(false);
     }
   };
-
-  // Loading states components
-  const LoadingSkeleton = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-5 w-32" />
-        <Skeleton className="h-6 w-10" />
-      </div>
-      <div className="space-y-4">
-        <Skeleton className="h-5 w-24" />
-        <div className="flex space-x-8">
-          <div className="flex items-center space-x-2">
-            <Skeleton className="h-4 w-4 rounded-full" />
-            <Skeleton className="h-5 w-20" />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Skeleton className="h-4 w-4 rounded-full" />
-            <Skeleton className="h-5 w-20" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   const LoadingCategoriesSkeleton = () => (
     <div className="space-y-4">
@@ -308,15 +309,12 @@ export default function SettingsPage() {
   ] as const;
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-medium">Settings</h2>
+        <ModeToggle />
+      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
@@ -561,5 +559,14 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <SettingsContent />
+    </Suspense>
   );
 } 
