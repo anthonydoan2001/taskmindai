@@ -7,8 +7,6 @@ import type { Database } from '@/types/supabase';
 // Remove edge runtime to avoid potential issues
 export const dynamic = 'force-dynamic';
 
-type UserProfile = Database['public']['Tables']['user_profiles']['Insert'];
-
 // Initialize Supabase client with more detailed error handling
 function initSupabaseClient() {
   console.log('Initializing Supabase client...');
@@ -40,7 +38,7 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 
   // Handle user creation
   if (event.type === 'user.created') {
-    const { id, email_addresses } = event.data;
+    const { id } = event.data;
     console.log('Processing user creation for ID:', id);
 
     try {
