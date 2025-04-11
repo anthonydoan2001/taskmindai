@@ -44,19 +44,18 @@ async function syncUserWithSupabase(event: WebhookEvent) {
     try {
       const supabase = initSupabaseClient();
 
-      // Check if profile already exists
-      const { data: existingProfile, error: lookupError } = await supabase
+      // Check if profile already exists - use count to be more efficient
+      const { count, error: countError } = await supabase
         .from('user_profiles')
-        .select()
-        .eq('user_id', id)
-        .single();
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', id);
 
-      if (lookupError && lookupError.code !== 'PGRST116') {
-        console.error('Error checking for existing profile:', lookupError);
-        throw lookupError;
+      if (countError) {
+        console.error('Error checking for existing profile:', countError);
+        throw countError;
       }
 
-      if (existingProfile) {
+      if (count && count > 0) {
         console.log('Profile already exists, skipping creation');
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
@@ -83,10 +82,13 @@ async function syncUserWithSupabase(event: WebhookEvent) {
         }
       };
 
-      // Create user profile with default settings
+      // Use upsert instead of insert to handle race conditions
       const { data: newProfile, error: profileError } = await supabase
         .from('user_profiles')
-        .insert([defaultProfile])
+        .upsert(defaultProfile, {
+          onConflict: 'user_id',
+          ignoreDuplicates: true
+        })
         .select()
         .single();
 
