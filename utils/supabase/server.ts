@@ -1,60 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
-import { Database } from '@/types/supabase';
+import { Database } from '@/lib/supabase';
+import { auth } from '@clerk/nextjs/server';
 
-export function createServerSupabaseClient() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Missing Supabase environment variables');
+export async function createClerkSupabaseClientSsr(clerkAuth: Awaited<ReturnType<typeof auth>>) {
+  const { getToken } = clerkAuth;
+
+  if (!getToken) {
+    throw new Error('getToken is required');
   }
 
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-      global: {
-        headers: {
-          'Accept': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-      },
-    }
-  );
-}
+  const token = await getToken();
 
-// Server-side client creation with Clerk auth
-export async function createClerkSupabaseClientSsr(auth: { getToken: (options?: { template?: string }) => Promise<string | null> }) {
-  try {
-    const token = await auth.getToken({ template: 'supabase' });
-    
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      throw new Error('Missing Supabase environment variables');
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl) throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL');
+  if (!supabaseKey) throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY');
+
+  return createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     }
-    
-    return createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-        global: {
-          headers: token ? {
-            Authorization: `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Prefer': 'return=minimal'
-          } : {
-            'Accept': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-        },
-      },
-    );
-  } catch (err) {
-    console.error('Failed to create Supabase client:', err);
-    throw err instanceof Error ? err : new Error('Failed to create Supabase client');
-  }
+  });
 } 

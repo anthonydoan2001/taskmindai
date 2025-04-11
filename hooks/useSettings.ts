@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useUser, useSession } from '@clerk/nextjs';
 import { toast } from 'sonner';
 import { type RealtimePostgresChangesPayload } from '@supabase/supabase-js';
@@ -18,6 +18,7 @@ export function useSettings() {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     // Wait for Clerk to load
@@ -29,60 +30,57 @@ export function useSettings() {
       return;
     }
 
+    // Skip if we've already initialized
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     const fetchSettings = async () => {
       try {
-        console.log('Fetching settings for user:', user.id);
-        const { data: profile, error: profileError } = await supabase
+        const { data: profiles, error: profileError } = await supabase
           .from('user_profiles')
-          .select('settings')
-          .eq('id', user.id)
-          .single();
+          .select('*')
+          .filter('user_id', 'eq', user.id);
 
-        if (profileError) {
-          console.log('Profile error:', profileError);
-          // Only throw if it's not a "no rows returned" error
-          if (profileError.code !== 'PGRST116') {
-            throw profileError;
-          }
-          
+        if (profileError) throw profileError;
+
+        const profile = profiles?.[0];
+        
+        if (!profile) {
           // Create a new profile with default settings
           const { data: newProfile, error: insertError } = await supabase
             .from('user_profiles')
             .insert({
-              id: user.id,
+              user_id: user.id,
               settings: DEFAULT_SETTINGS,
-              working_days: [
-                { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-                { dayOfWeek: '1', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '2', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-              ],
+              working_days: {
+                monday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                tuesday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                wednesday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                thursday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                friday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                saturday: { start: '09:00', end: '17:00', isWorkingDay: false },
+                sunday: { start: '09:00', end: '17:00', isWorkingDay: false }
+              }
             })
             .select()
             .single();
 
-          if (insertError) {
-            throw insertError;
-          }
+          if (insertError) throw insertError;
 
           if (newProfile?.settings) {
             setSettings(newProfile.settings);
           } else {
-            console.warn('No settings in new profile, using defaults');
             setSettings(DEFAULT_SETTINGS);
           }
-        } else {
-          console.log('Existing profile found:', profile);
-          if (profile?.settings) {
-            setSettings(profile.settings);
-          } else {
-            console.warn('Profile found but no settings, using defaults');
-            setSettings(DEFAULT_SETTINGS);
-          }
+          return;
         }
+
+        if (profile?.settings) {
+          setSettings(profile.settings);
+        } else {
+          setSettings(DEFAULT_SETTINGS);
+        }
+
         setError(null);
       } catch (error) {
         console.error('Error in fetchSettings:', error);
@@ -104,10 +102,9 @@ export function useSettings() {
           event: '*',
           schema: 'public',
           table: 'user_profiles',
-          filter: `id=eq.${user.id}`,
+          filter: `user_id=eq.${user.id}`,
         },
         (payload: RealtimePostgresChangesPayload<{ settings: UserSettings }>) => {
-          console.log('Received settings update:', payload);
           const newData = payload.new as { settings: UserSettings } | null;
           if (newData?.settings) {
             setSettings(newData.settings);
@@ -138,38 +135,32 @@ export function useSettings() {
         const { data: existingProfile, error: fetchError } = await supabase
           .from('user_profiles')
           .select('settings')
-          .eq('id', user.id)
+          .eq('user_id', user.id)
           .single();
 
         if (fetchError) {
           if (fetchError.code === 'PGRST116') {
             // Profile doesn't exist, create it
-            console.log('Creating new profile for settings update');
             const { data: newProfile, error: insertError } = await supabase
               .from('user_profiles')
               .insert({
-                id: user.id,
+                user_id: user.id,
                 settings: DEFAULT_SETTINGS,
-                working_days: [
-                  { dayOfWeek: '0', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-                  { dayOfWeek: '1', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '2', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '3', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '4', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '5', startTime: '09:00', endTime: '17:00', isWorkingDay: true },
-                  { dayOfWeek: '6', startTime: '09:00', endTime: '17:00', isWorkingDay: false },
-                ],
+                working_days: {
+                  monday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                  tuesday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                  wednesday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                  thursday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                  friday: { start: '09:00', end: '17:00', isWorkingDay: true },
+                  saturday: { start: '09:00', end: '17:00', isWorkingDay: false },
+                  sunday: { start: '09:00', end: '17:00', isWorkingDay: false }
+                }
               })
               .select()
               .single();
 
-            if (insertError) {
-              console.error('Error creating profile:', insertError);
-              throw insertError;
-            }
-            console.log('New profile created:', newProfile);
+            if (insertError) throw insertError;
           } else {
-            console.error('Error fetching profile:', fetchError);
             throw fetchError;
           }
         } else {
@@ -181,20 +172,15 @@ export function useSettings() {
           ...newSettings,
         };
 
-        console.log('Updating settings to:', updatedSettings);
-
         const { error } = await supabase
           .from('user_profiles')
           .update({
             settings: updatedSettings,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', user.id);
+          .eq('user_id', user.id);
 
-        if (error) {
-          console.error('Error updating profile:', error);
-          throw error;
-        }
+        if (error) throw error;
 
         setSettings(updatedSettings);
         toast.success('Settings updated');
@@ -205,7 +191,7 @@ export function useSettings() {
         setLoading(false);
       }
     },
-    [user?.id],
+    [user?.id, supabase],
   );
 
   return {

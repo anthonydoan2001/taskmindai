@@ -4,66 +4,62 @@ import { WebhookEvent } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
-export const runtime = 'edge'; // Add edge runtime
-export const dynamic = 'force-dynamic'; // Ensure dynamic handling
+// Remove edge runtime to avoid potential issues
+export const dynamic = 'force-dynamic';
 
 type UserProfile = Database['public']['Tables']['user_profiles']['Insert'];
 
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+// Initialize Supabase client with more detailed error handling
+function initSupabaseClient() {
+  console.log('Initializing Supabase client...');
+  
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    console.error('Missing Supabase environment variables:', {
+      hasUrl: !!url,
+      hasKey: !!key
+    });
+    throw new Error(`Missing Supabase environment variables: ${!url ? 'NEXT_PUBLIC_SUPABASE_URL' : ''} ${!key ? 'SUPABASE_SERVICE_ROLE_KEY' : ''}`);
+  }
+
+  console.log('Supabase URL:', url);
+  console.log('Service role key present:', !!key);
+
+  return createClient<Database>(url, key, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-    global: {
-      headers: {
-        'Accept': 'application/vnd.pgrst.object+json',
-        'Prefer': 'return=representation'
-      },
-    },
-  },
-);
+  });
+}
 
 async function syncUserWithSupabase(event: WebhookEvent) {
   console.log('Processing webhook event:', event.type);
-  console.log('Event data:', JSON.stringify(event.data, null, 2));
 
   // Handle user creation
   if (event.type === 'user.created') {
-    console.log('Creating new user profile in Supabase');
     const { id, email_addresses } = event.data;
-    console.log('User ID from Clerk:', id);
-    console.log('User email:', email_addresses?.[0]?.email_address);
+    console.log('Processing user creation for ID:', id);
 
     try {
+      const supabase = initSupabaseClient();
+
       // Check if profile already exists
-      console.log('Checking for existing profile...');
       const { data: existingProfile, error: lookupError } = await supabase
         .from('user_profiles')
         .select()
-        .eq('id', id)
+        .eq('user_id', id)
         .single();
 
-      if (lookupError) {
-        console.error('Lookup error details:', {
-          code: lookupError.code,
-          message: lookupError.message,
-          details: lookupError.details,
-          hint: lookupError.hint
-        });
-        
-        if (lookupError.code !== 'PGRST116') {
-          return new Response(JSON.stringify({ error: lookupError.message }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
+      if (lookupError && lookupError.code !== 'PGRST116') {
+        console.error('Error checking for existing profile:', lookupError);
+        throw lookupError;
       }
 
       if (existingProfile) {
-        console.log('Existing profile found:', JSON.stringify(existingProfile, null, 2));
+        console.log('Profile already exists, skipping creation');
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -71,8 +67,8 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       }
 
       // Create default profile data
-      const defaultProfile: UserProfile = {
-        id,
+      const defaultProfile = {
+        user_id: id,
         settings: {
           militaryTime: false,
           workType: 'full-time',
@@ -89,45 +85,28 @@ async function syncUserWithSupabase(event: WebhookEvent) {
         }
       };
 
-      console.log('Attempting to create profile with data:', JSON.stringify(defaultProfile, null, 2));
-
       // Create user profile with default settings
       const { data: newProfile, error: profileError } = await supabase
         .from('user_profiles')
-        .insert(defaultProfile)
+        .insert([defaultProfile])
         .select()
         .single();
 
       if (profileError) {
-        console.error('Profile creation error details:', {
-          code: profileError.code,
-          message: profileError.message,
-          details: profileError.details,
-          hint: profileError.hint
-        });
-        console.error('Profile data that failed:', JSON.stringify(defaultProfile, null, 2));
-        return new Response(JSON.stringify({ 
-          error: profileError.message,
-          details: profileError.details,
-          hint: profileError.hint 
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        console.error('Error creating user profile:', profileError);
+        throw profileError;
       }
 
-      console.log('Successfully created user profile in Supabase:', JSON.stringify(newProfile, null, 2));
+      console.log('Successfully created user profile:', newProfile);
       return new Response(JSON.stringify({ success: true, profile: newProfile }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     } catch (error) {
-      console.error('Unexpected error during user creation:', error);
-      // Log the full error object for debugging
-      console.error('Full error details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      console.error('Error during user creation:', error);
       return new Response(JSON.stringify({ 
-        error: 'Internal server error during user creation',
-        details: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : 'Unknown error during user creation',
+        details: error
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -138,33 +117,33 @@ async function syncUserWithSupabase(event: WebhookEvent) {
   // Handle user deletion
   if (event.type === 'user.deleted') {
     const { id } = event.data;
+    console.log('Processing user deletion for ID:', id);
 
     try {
+      const supabase = initSupabaseClient();
+      
       // Delete user profile
-      const { data: deletedProfile, error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('user_profiles')
         .delete()
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('user_id', id);
 
       if (profileError) {
-        console.error('Error deleting user profile in Supabase:', profileError);
-        console.error('Failed deletion for id:', id);
-        return new Response(JSON.stringify({ error: profileError.message }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        console.error('Error deleting user profile:', profileError);
+        throw profileError;
       }
 
-      console.log('Successfully deleted user profile from Supabase:', JSON.stringify(deletedProfile, null, 2));
-      return new Response(JSON.stringify({ success: true, profile: deletedProfile }), {
+      console.log('Successfully deleted user profile for ID:', id);
+      return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     } catch (error) {
-      console.error('Unexpected error during user deletion:', error);
-      return new Response(JSON.stringify({ error: 'Internal server error during user deletion' }), {
+      console.error('Error during user deletion:', error);
+      return new Response(JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error during user deletion',
+        details: error
+      }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -178,139 +157,74 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 }
 
 export async function POST(req: Request) {
-  // Add CORS headers
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, svix-id, svix-timestamp, svix-signature',
-  };
-
-  // Handle OPTIONS request
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders,
-    });
-  }
-
-  console.log('Webhook endpoint hit');
-  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
-
-  if (!WEBHOOK_SECRET) {
-    console.error('Missing CLERK_WEBHOOK_SECRET');
-    return new Response(
-      JSON.stringify({ error: 'Missing CLERK_WEBHOOK_SECRET' }), 
-      { 
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      }
-    );
-  }
-
-  // Get the headers
-  const headerPayload = headers();
-  const svix_id = headerPayload.get('svix-id');
-  const svix_timestamp = headerPayload.get('svix-timestamp');
-  const svix_signature = headerPayload.get('svix-signature');
-
-  // Log headers
-  console.log('Webhook headers received:', {
-    'svix-id': svix_id,
-    'svix-timestamp': svix_timestamp,
-    'svix-signature': svix_signature?.substring(0, 10) + '...' // Log partial signature for security
-  });
-
-  // If there are no headers, error out
-  if (!svix_id || !svix_timestamp || !svix_signature) {
-    console.error('Missing required Svix headers');
-    return new Response(
-      JSON.stringify({ error: 'Missing required Svix headers' }), 
-      { 
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      }
-    );
-  }
-
-  // Get the body
-  let payload;
-  try {
-    payload = await req.json();
-    console.log('Webhook payload received:', JSON.stringify(payload, null, 2));
-  } catch (err) {
-    console.error('Error parsing request body:', err);
-    return new Response(
-      JSON.stringify({ error: 'Error parsing request body' }), 
-      { 
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      }
-    );
-  }
+  console.log('Webhook endpoint hit at:', new Date().toISOString());
+  console.log('Request URL:', req.url);
+  console.log('Request method:', req.method);
   
-  const body = JSON.stringify(payload);
-
-  // Create a new SVIX instance with your secret
-  const wh = new Webhook(WEBHOOK_SECRET);
-
-  let evt: WebhookEvent;
-
   try {
-    evt = wh.verify(body, {
+    const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
+
+    if (!WEBHOOK_SECRET) {
+      console.error('Missing CLERK_WEBHOOK_SECRET environment variable');
+      throw new Error('Missing CLERK_WEBHOOK_SECRET');
+    }
+
+    // Get the headers
+    const headerPayload = headers();
+    const svix_id = headerPayload.get('svix-id');
+    const svix_timestamp = headerPayload.get('svix-timestamp');
+    const svix_signature = headerPayload.get('svix-signature');
+
+    // Log headers
+    console.log('Webhook headers received:', {
       'svix-id': svix_id,
       'svix-timestamp': svix_timestamp,
-      'svix-signature': svix_signature,
-    }) as WebhookEvent;
-    console.log('Webhook verified successfully');
-  } catch (err) {
-    console.error('Error verifying webhook:', err);
-    return new Response(
-      JSON.stringify({ error: 'Error verifying webhook signature' }), 
-      { 
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
-      }
-    );
-  }
-
-  // Log Supabase connection details (without sensitive info)
-  console.log('Supabase URL being used:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-  console.log('Service role key present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-
-  try {
-    const response = await syncUserWithSupabase(evt);
-    // Add CORS headers to the successful response
-    const newHeaders = new Headers(response.headers);
-    Object.entries(corsHeaders).forEach(([key, value]) => {
-      newHeaders.set(key, value);
+      'svix-signature': svix_signature?.substring(0, 10) + '...'
     });
+
+    if (!svix_id || !svix_timestamp || !svix_signature) {
+      console.error('Missing required Svix headers:', {
+        hasSvixId: !!svix_id,
+        hasSvixTimestamp: !!svix_timestamp,
+        hasSvixSignature: !!svix_signature
+      });
+      throw new Error('Missing required Svix headers');
+    }
+
+    // Get the body
+    const payload = await req.json();
+    console.log('Webhook payload received:', JSON.stringify(payload, null, 2));
     
-    return new Response(response.body, {
-      status: response.status,
-      headers: newHeaders,
-    });
+    const body = JSON.stringify(payload);
+
+    // Create a new SVIX instance with your secret
+    const wh = new Webhook(WEBHOOK_SECRET);
+
+    let evt: WebhookEvent;
+
+    try {
+      evt = wh.verify(body, {
+        'svix-id': svix_id,
+        'svix-timestamp': svix_timestamp,
+        'svix-signature': svix_signature,
+      }) as WebhookEvent;
+      console.log('Webhook verified successfully');
+    } catch (err) {
+      console.error('Error verifying webhook:', err);
+      throw new Error('Error verifying webhook signature');
+    }
+
+    return await syncUserWithSupabase(evt);
   } catch (error) {
-    console.error('Error in syncUserWithSupabase:', error);
+    console.error('Webhook handler error:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }), 
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error in webhook handler',
+        details: error
+      }), 
       { 
         status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
+        headers: { 'Content-Type': 'application/json' },
       }
     );
   }

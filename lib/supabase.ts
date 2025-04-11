@@ -4,11 +4,20 @@ export type UserSettings = {
   categories: string[];
 };
 
-export type WorkingDay = {
-  dayOfWeek: string;
-  startTime: string;
-  endTime: string;
+export type DaySchedule = {
+  start: string;
+  end: string;
   isWorkingDay: boolean;
+};
+
+export type WorkingDays = {
+  monday: DaySchedule;
+  tuesday: DaySchedule;
+  wednesday: DaySchedule;
+  thursday: DaySchedule;
+  friday: DaySchedule;
+  saturday: DaySchedule;
+  sunday: DaySchedule;
 };
 
 export type Database = {
@@ -17,30 +26,36 @@ export type Database = {
       user_profiles: {
         Row: {
           id: string;
-          clerk_id: string;
+          user_id: string;
           created_at: string;
           updated_at: string;
           settings: UserSettings;
-          working_days: WorkingDay[];
+          working_days: WorkingDays;
         };
         Insert: {
           id?: string;
-          clerk_id: string;
+          user_id: string;
           created_at?: string;
           updated_at?: string;
           settings?: UserSettings;
-          working_days?: WorkingDay[];
+          working_days?: WorkingDays;
         };
         Update: {
           id?: string;
-          clerk_id?: string;
+          user_id?: string;
           created_at?: string;
           updated_at?: string;
           settings?: UserSettings;
-          working_days?: WorkingDay[];
+          working_days?: WorkingDays;
         };
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      requesting_user_id: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+    };
   };
 };
+

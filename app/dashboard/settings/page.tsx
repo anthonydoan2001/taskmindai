@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useWorkingDays } from '../../../hooks/useWorkingDays';
-import { type WorkingDay } from '@/lib/supabase';
+import { type WorkingDays, type DaySchedule } from '@/lib/supabase';
 import { useSettings } from '../../../hooks/useSettings';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,6 +48,16 @@ const LoadingSkeleton = () => (
   </div>
 );
 
+const DAYS = [
+  { name: 'Monday', value: 'monday' },
+  { name: 'Tuesday', value: 'tuesday' },
+  { name: 'Wednesday', value: 'wednesday' },
+  { name: 'Thursday', value: 'thursday' },
+  { name: 'Friday', value: 'friday' },
+  { name: 'Saturday', value: 'saturday' },
+  { name: 'Sunday', value: 'sunday' },
+] as const;
+
 // Create a separate client component for the settings content
 function SettingsContent() {
   const searchParams = useSearchParams();
@@ -58,7 +68,7 @@ function SettingsContent() {
   const { settings, loading: settingsLoading, updateSettings } = useSettings();
 
   // Add optimistic state updates
-  const [optimisticWorkingDays, setOptimisticWorkingDays] = useState<WorkingDay[]>([]);
+  const [optimisticWorkingDays, setOptimisticWorkingDays] = useState<WorkingDays | null>(null);
   const [optimisticSettings, setOptimisticSettings] = useState<typeof settings>({
     militaryTime: false,
     workType: 'full-time',
@@ -80,7 +90,7 @@ function SettingsContent() {
   }, [settings]);
 
   // Use optimistic values if available, otherwise use actual values
-  const displayWorkingDays = optimisticWorkingDays.length > 0 ? optimisticWorkingDays : workingDays;
+  const displayWorkingDays = optimisticWorkingDays || workingDays;
   const displaySettings = {
     militaryTime: optimisticSettings?.militaryTime ?? settings?.militaryTime ?? false,
     workType: optimisticSettings?.workType ?? settings?.workType ?? 'full-time',
@@ -88,35 +98,55 @@ function SettingsContent() {
   };
 
   // Debounced update functions
-  const debouncedHandleWorkingDayUpdate = useDebouncedCallback(async (dayOfWeek: string, updates: Partial<WorkingDay>) => {
+  const debouncedHandleWorkingDayUpdate = useDebouncedCallback(async (dayOfWeek: string, updates: Partial<DaySchedule>) => {
+    if (!displayWorkingDays) return;
+    
     try {
       setIsUpdating(true);
       setError(null);
-      const newWorkingDays = displayWorkingDays.map((day) => {
-        if (day.dayOfWeek === dayOfWeek) {
-          return { ...day, ...updates };
-        }
-        return day;
-      });
 
-      // Validate time ranges
-      if (updates.startTime && updates.endTime) {
-        const start = parseInt(updates.startTime.split(':')[0]);
-        const end = parseInt(updates.endTime.split(':')[0]);
-        if (start >= end) {
+      // Get the current day's schedule
+      const currentDay = displayWorkingDays[dayOfWeek as keyof WorkingDays];
+      if (!currentDay) {
+        throw new Error('Invalid day selected');
+      }
+
+      // Create new working days object with the update
+      const newWorkingDays = {
+        ...displayWorkingDays,
+        [dayOfWeek]: {
+          ...currentDay,
+          ...updates,
+        },
+      };
+
+      // Validate time ranges if both start and end are being updated
+      if (updates.start || updates.end) {
+        const startTime = updates.start || currentDay.start;
+        const endTime = updates.end || currentDay.end;
+        const startHour = parseInt(startTime.split(':')[0]);
+        const endHour = parseInt(endTime.split(':')[0]);
+        
+        if (startHour >= endHour) {
           throw new Error('End time must be after start time');
         }
       }
 
+      // Update optimistically
       setOptimisticWorkingDays(newWorkingDays);
+
+      // Attempt the update
       await updateWorkingDays(newWorkingDays);
-      toast.success('Working hours updated successfully');
+
+      // Clear optimistic state on success
+      setOptimisticWorkingDays(null);
+      setError(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update working hours';
       setError(errorMessage);
       toast.error(errorMessage);
       // Revert optimistic update on error
-      setOptimisticWorkingDays([]);
+      setOptimisticWorkingDays(null);
     } finally {
       setIsUpdating(false);
     }
@@ -232,27 +262,13 @@ function SettingsContent() {
     }
   };
 
-  const calculateTotalWeeklyHours = (workingDays: WorkingDay[]) => {
-    let total = 0;
-
-    for (const day of workingDays) {
-      if (!day?.isWorkingDay || !day?.startTime || !day?.endTime) {
-        continue;
-      }
-
-      try {
-        const [startHour] = day.startTime.split(':').map(Number);
-        const [endHour] = day.endTime.split(':').map(Number);
-
-        if (!isNaN(startHour) && !isNaN(endHour)) {
-          total += Math.max(0, endHour - startHour);
-        }
-      } catch (error) {
-        console.error('Error calculating hours for day:', day, error);
-      }
-    }
-
-    return total;
+  const calculateTotalWeeklyHours = (workingDays: WorkingDays) => {
+    return Object.values(workingDays).reduce((total: number, day: DaySchedule) => {
+      if (!day.isWorkingDay) return total;
+      const startHour = parseInt(day.start.split(':')[0]);
+      const endHour = parseInt(day.end.split(':')[0]);
+      return total + (endHour - startHour);
+    }, 0);
   };
 
   const handleWorkTypeChange = async (value: 'full-time' | 'part-time') => {
@@ -267,38 +283,64 @@ function SettingsContent() {
       };
       handleSettingsUpdate(updatedSettings);
 
-      // Update working hours optimistically
-      const newWorkingDays = displayWorkingDays.map((day) => ({
-        ...day,
-        isWorkingDay:
-          value === 'full-time'
-            ? ['1', '2', '3', '4', '5'].includes(day.dayOfWeek)
-            : day.isWorkingDay,
-        startTime: value === 'full-time' ? '09:00' : day.startTime,
-        endTime: value === 'full-time' ? '17:00' : day.endTime,
-      }));
+      // Update working hours based on work type
+      const newWorkingDays = {
+        ...displayWorkingDays,
+        monday: {
+          ...displayWorkingDays.monday,
+          isWorkingDay: value === 'full-time',
+          start: '09:00',
+          end: '17:00',
+        },
+        tuesday: {
+          ...displayWorkingDays.tuesday,
+          isWorkingDay: value === 'full-time',
+          start: '09:00',
+          end: '17:00',
+        },
+        wednesday: {
+          ...displayWorkingDays.wednesday,
+          isWorkingDay: value === 'full-time',
+          start: '09:00',
+          end: '17:00',
+        },
+        thursday: {
+          ...displayWorkingDays.thursday,
+          isWorkingDay: value === 'full-time',
+          start: '09:00',
+          end: '17:00',
+        },
+        friday: {
+          ...displayWorkingDays.friday,
+          isWorkingDay: value === 'full-time',
+          start: '09:00',
+          end: '17:00',
+        },
+        saturday: {
+          ...displayWorkingDays.saturday,
+          isWorkingDay: false,
+          start: '09:00',
+          end: '17:00',
+        },
+        sunday: {
+          ...displayWorkingDays.sunday,
+          isWorkingDay: false,
+          start: '09:00',
+          end: '17:00',
+        },
+      };
 
       setOptimisticWorkingDays(newWorkingDays);
       await updateWorkingDays(newWorkingDays);
     } catch (err) {
       setError('Failed to update work type. Please try again.');
       // Revert optimistic updates
-      setOptimisticWorkingDays([]);
+      setOptimisticWorkingDays(null);
       setOptimisticSettings(settings);
     } finally {
       setIsUpdating(false);
     }
   };
-
-  const DAYS = [
-    { name: 'Sunday', value: '0' },
-    { name: 'Monday', value: '1' },
-    { name: 'Tuesday', value: '2' },
-    { name: 'Wednesday', value: '3' },
-    { name: 'Thursday', value: '4' },
-    { name: 'Friday', value: '5' },
-    { name: 'Saturday', value: '6' },
-  ] as const;
 
   return (
     <div className="container mx-auto p-6">
@@ -311,9 +353,9 @@ function SettingsContent() {
       )}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="w-full justify-start">
-          <TabsTrigger value="general" disabled={settingsLoading}>General</TabsTrigger>
-          <TabsTrigger value="categories" disabled={settingsLoading}>Categories</TabsTrigger>
-          <TabsTrigger value="working-hours" disabled={workingDaysLoading}>Working Hours</TabsTrigger>
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="working-hours">Working Hours</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -437,16 +479,15 @@ function SettingsContent() {
             <CardContent className="space-y-6">
               {workingDaysLoading ? (
                 <LoadingWorkingHoursSkeleton />
+              ) : !displayWorkingDays ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground">Failed to load working hours. Please refresh the page.</p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {DAYS.map(({ name, value }) => {
-                    const day = displayWorkingDays.find((d) => d.dayOfWeek === value) || {
-                      dayOfWeek: value,
-                      isWorkingDay: false,
-                      startTime: '09:00',
-                      endTime: '17:00',
-                    };
-
+                    const day = displayWorkingDays[value as keyof WorkingDays];
+                    if (!day) return null;
                     return (
                       <div key={value} className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -455,8 +496,8 @@ function SettingsContent() {
                             onCheckedChange={(checked) => {
                               handleWorkingDayUpdate(value, {
                                 isWorkingDay: checked,
-                                startTime: day.startTime,
-                                endTime: day.endTime,
+                                start: day.start,
+                                end: day.end,
                               });
                             }}
                             disabled={isUpdating}
@@ -466,17 +507,17 @@ function SettingsContent() {
                         {day.isWorkingDay && (
                           <div className="flex items-center space-x-2">
                             <Select
-                              value={day.startTime}
+                              value={day.start}
                               onValueChange={(time) => {
                                 handleWorkingDayUpdate(value, {
-                                  startTime: time,
-                                  endTime: day.endTime,
+                                  start: time,
+                                  end: day.end,
                                 });
                               }}
                               disabled={isUpdating}
                             >
                               <SelectTrigger className="w-[100px]">
-                                <SelectValue />
+                                <SelectValue placeholder={formatTime(day.start)} />
                               </SelectTrigger>
                               <SelectContent>
                                 {Array.from({ length: 24 }, (_, i) => (
@@ -488,17 +529,17 @@ function SettingsContent() {
                             </Select>
                             <span>to</span>
                             <Select
-                              value={day.endTime}
+                              value={day.end}
                               onValueChange={(time) => {
                                 handleWorkingDayUpdate(value, {
-                                  startTime: day.startTime,
-                                  endTime: time,
+                                  start: day.start,
+                                  end: time,
                                 });
                               }}
                               disabled={isUpdating}
                             >
                               <SelectTrigger className="w-[100px]">
-                                <SelectValue />
+                                <SelectValue placeholder={formatTime(day.end)} />
                               </SelectTrigger>
                               <SelectContent>
                                 {Array.from({ length: 24 }, (_, i) => (
@@ -535,4 +576,4 @@ export default function SettingsPage() {
       <SettingsContent />
     </Suspense>
   );
-}
+} 
