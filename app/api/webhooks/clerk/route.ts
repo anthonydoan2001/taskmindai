@@ -38,67 +38,56 @@ async function syncUserWithSupabase(event: WebhookEvent) {
 
   // Handle user creation
   if (event.type === 'user.created') {
-    const { id } = event.data;
+    const { id, email_addresses } = event.data;
+    const primaryEmail = email_addresses?.[0]?.email_address;
+    
     console.log('Processing user creation for ID:', id);
+    console.log('User email:', primaryEmail);
+
+    if (!primaryEmail) {
+      console.error('No email address found for user');
+      throw new Error('No email address found for user');
+    }
 
     try {
       const supabase = initSupabaseClient();
 
-      // Check if profile already exists - use count to be more efficient
-      const { count, error: countError } = await supabase
+      // Create or update profile using upsert with proper conflict handling
+      const { data: profile, error: upsertError } = await supabase
         .from('user_profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', id);
+        .upsert(
+          {
+            user_id: id,
+            email: primaryEmail,
+            settings: {
+              militaryTime: false,
+              workType: 'full-time',
+              categories: ['Work', 'Personal', 'Errands']
+            },
+            working_days: {
+              monday: { start: '09:00', end: '17:00', isWorkingDay: true },
+              tuesday: { start: '09:00', end: '17:00', isWorkingDay: true },
+              wednesday: { start: '09:00', end: '17:00', isWorkingDay: true },
+              thursday: { start: '09:00', end: '17:00', isWorkingDay: true },
+              friday: { start: '09:00', end: '17:00', isWorkingDay: true },
+              saturday: { start: '09:00', end: '17:00', isWorkingDay: false },
+              sunday: { start: '09:00', end: '17:00', isWorkingDay: false }
+            },
+            updated_at: new Date().toISOString()
+          },
+          {
+            onConflict: 'user_id',
+            ignoreDuplicates: false
+          }
+        );
 
-      if (countError) {
-        console.error('Error checking for existing profile:', countError);
-        throw countError;
+      if (upsertError) {
+        console.error('Error upserting user profile:', upsertError);
+        throw upsertError;
       }
 
-      if (count && count > 0) {
-        console.log('Profile already exists, skipping creation');
-        return new Response(JSON.stringify({ success: true }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Create default profile data
-      const defaultProfile = {
-        user_id: id,
-        settings: {
-          militaryTime: false,
-          workType: 'full-time',
-          categories: ['Work', 'Personal', 'Errands']
-        },
-        working_days: {
-          monday: { start: '09:00', end: '17:00', isWorkingDay: true },
-          tuesday: { start: '09:00', end: '17:00', isWorkingDay: true },
-          wednesday: { start: '09:00', end: '17:00', isWorkingDay: true },
-          thursday: { start: '09:00', end: '17:00', isWorkingDay: true },
-          friday: { start: '09:00', end: '17:00', isWorkingDay: true },
-          saturday: { start: '09:00', end: '17:00', isWorkingDay: false },
-          sunday: { start: '09:00', end: '17:00', isWorkingDay: false }
-        }
-      };
-
-      // Use upsert instead of insert to handle race conditions
-      const { data: newProfile, error: profileError } = await supabase
-        .from('user_profiles')
-        .upsert(defaultProfile, {
-          onConflict: 'user_id',
-          ignoreDuplicates: true
-        })
-        .select()
-        .single();
-
-      if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        throw profileError;
-      }
-
-      console.log('Successfully created user profile:', newProfile);
-      return new Response(JSON.stringify({ success: true, profile: newProfile }), {
+      console.log('Successfully upserted user profile');
+      return new Response(JSON.stringify({ success: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -117,12 +106,13 @@ async function syncUserWithSupabase(event: WebhookEvent) {
   // Handle user deletion
   if (event.type === 'user.deleted') {
     const { id } = event.data;
+    
     console.log('Processing user deletion for ID:', id);
 
     try {
       const supabase = initSupabaseClient();
       
-      // Delete user profile
+      // Delete user profile by user_id only since email is not available in deletion event
       const { error: profileError } = await supabase
         .from('user_profiles')
         .delete()
