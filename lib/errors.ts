@@ -103,3 +103,16 @@ export const handleAuthError = (error: AuthError): ErrorResponse => {
 
   return createErrorResponse(AUTH_ERRORS.CLERK.UNAUTHORIZED, AUTH_ERRORS.HTTP.UNAUTHORIZED, error);
 };
+
+export const ErrorTypes = {
+  INITIALIZATION: 'INITIALIZATION_ERROR',
+  ENVIRONMENT: 'ENVIRONMENT_ERROR',
+  WEBHOOK_VERIFICATION: 'WEBHOOK_VERIFICATION_ERROR',
+  USER_CREATION: 'USER_CREATION_ERROR',
+  USER_DELETION: 'USER_DELETION_ERROR',
+  DATABASE: 'DATABASE_ERROR',
+  VALIDATION: 'VALIDATION_ERROR',
+  UNKNOWN: 'UNKNOWN_ERROR'
+} as const;
+
+export type ErrorType = typeof ErrorTypes[keyof typeof ErrorTypes];
