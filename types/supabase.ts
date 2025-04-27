@@ -3,18 +3,91 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
-      customers: {
+      users: {
         Row: {
           id: string;
-          stripe_customer_id: string;
+          email: string;
+          full_name: string | null;
+          billing_address: Json | null;
+          payment_method: Json | null;
+          created_at: string;
+          updated_at: string;
         };
         Insert: {
           id: string;
-          stripe_customer_id: string;
+          email: string;
+          full_name?: string | null;
+          billing_address?: Json | null;
+          payment_method?: Json | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
-          stripe_customer_id?: string;
+          email?: string;
+          full_name?: string | null;
+          billing_address?: Json | null;
+          payment_method?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: 'email' | 'in_app' | 'push';
+          message: string;
+          is_read: boolean;
+          trigger_event: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: 'email' | 'in_app' | 'push';
+          message: string;
+          is_read?: boolean;
+          trigger_event?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: 'email' | 'in_app' | 'push';
+          message?: string;
+          is_read?: boolean;
+          trigger_event?: string | null;
+          created_at?: string;
+        };
+      };
+      plan_tiers: {
+        Row: {
+          id: string;
+          name: string;
+          monthly_price_cents: number;
+          max_ai_requests: number;
+          max_calendars: number;
+          max_notifications: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          monthly_price_cents?: number;
+          max_ai_requests: number;
+          max_calendars: number;
+          max_notifications: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          monthly_price_cents?: number;
+          max_ai_requests?: number;
+          max_calendars?: number;
+          max_notifications?: number;
+          created_at?: string;
         };
       };
       products: {
@@ -88,93 +161,73 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          status: string | null;
+          plan_id: string;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          status: 'active' | 'canceled' | 'past_due' | 'trialing';
+          current_period_end: string;
           metadata: Json | null;
-          price_id: string | null;
-          quantity: number | null;
-          cancel_at_period_end: boolean | null;
-          created: string | null;
-          current_period_start: string | null;
-          current_period_end: string | null;
-          ended_at: string | null;
-          cancel_at: string | null;
-          canceled_at: string | null;
-          trial_start: string | null;
-          trial_end: string | null;
+          created_at: string;
+          updated_at: string;
         };
         Insert: {
-          id: string;
+          id?: string;
           user_id: string;
-          status?: string | null;
+          plan_id: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          status: 'active' | 'canceled' | 'past_due' | 'trialing';
+          current_period_end: string;
           metadata?: Json | null;
-          price_id?: string | null;
-          quantity?: number | null;
-          cancel_at_period_end?: boolean | null;
-          created?: string | null;
-          current_period_start?: string | null;
-          current_period_end?: string | null;
-          ended_at?: string | null;
-          cancel_at?: string | null;
-          canceled_at?: string | null;
-          trial_start?: string | null;
-          trial_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           user_id?: string;
-          status?: string | null;
+          plan_id?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          status?: 'active' | 'canceled' | 'past_due' | 'trialing';
+          current_period_end?: string;
           metadata?: Json | null;
-          price_id?: string | null;
-          quantity?: number | null;
-          cancel_at_period_end?: boolean | null;
-          created?: string | null;
-          current_period_start?: string | null;
-          current_period_end?: string | null;
-          ended_at?: string | null;
-          cancel_at?: string | null;
-          canceled_at?: string | null;
-          trial_start?: string | null;
-          trial_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
       };
-      users: {
+      work_schedules: {
         Row: {
           id: string;
-          billing_address: Json | null;
-          payment_method: Json | null;
+          user_id: string;
+          day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+          start_time: string;
+          end_time: string;
+          is_active: boolean;
+          timezone: string;
+          created_at: string;
+          updated_at: string;
         };
         Insert: {
-          id: string;
-          billing_address?: Json | null;
-          payment_method?: Json | null;
+          id?: string;
+          user_id: string;
+          day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+          start_time: string;
+          end_time: string;
+          is_active?: boolean;
+          timezone?: string;
+          created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
-          billing_address?: Json | null;
-          payment_method?: Json | null;
-        };
-      };
-      user_profiles: {
-        Row: {
-          id: string;
-          created_at: string | null;
-          updated_at: string | null;
-          settings: Json | null;
-          working_days: Json | null;
-        };
-        Insert: {
-          id: string;
-          created_at?: string | null;
-          updated_at?: string | null;
-          settings?: Json | null;
-          working_days?: Json | null;
-        };
-        Update: {
-          id?: string;
-          created_at?: string | null;
-          updated_at?: string | null;
-          settings?: Json | null;
-          working_days?: Json | null;
+          user_id?: string;
+          day?: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+          start_time?: string;
+          end_time?: string;
+          is_active?: boolean;
+          timezone?: string;
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };

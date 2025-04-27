@@ -4,22 +4,29 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { DailyCheckIn } from '@/components/dashboard/daily-check-in';
-import { ViewCalendar } from '@/components/dashboard/view-calendar';
+import { DailyCheckIn } from '@/components/main/daily-check-in';
+import { ViewCalendar } from '@/components/main/view-calendar';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [showCheckIn, setShowCheckIn] = useState(false);
 
+  // Handle initial mount and localStorage check
   useEffect(() => {
-    // Show daily check-in popup if not completed today
-    const lastCheckIn = localStorage.getItem('lastCheckIn');
+    setMounted(true);
+    const lastCheckIn = window.localStorage.getItem('lastCheckIn');
     const today = new Date().toDateString();
 
     if (lastCheckIn !== today) {
       setShowCheckIn(true);
     }
   }, []);
+
+  // Don't render anything until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -46,11 +53,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {showCheckIn && (
+      {showCheckIn && mounted && (
         <DailyCheckIn
           onComplete={() => {
             setShowCheckIn(false);
-            localStorage.setItem('lastCheckIn', new Date().toDateString());
+            window.localStorage.setItem('lastCheckIn', new Date().toDateString());
           }}
         />
       )}

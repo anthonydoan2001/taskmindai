@@ -12,6 +12,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Brain,
+  Repeat,
+  Target,
+  FileText,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -25,22 +28,37 @@ const navItems = [
   },
   {
     title: 'Task Input',
-    href: '/dashboard/task',
+    href: '/task',
     icon: PlusCircle,
   },
   {
     title: 'Calendar',
-    href: '/dashboard/calendar',
+    href: '/calendar',
     icon: CalendarDays,
   },
   {
+    title: 'Habits',
+    href: '/habits',
+    icon: Repeat,
+  },
+  {
+    title: 'Priorities',
+    href: '/priorities',
+    icon: Target,
+  },
+  {
+    title: 'Task Templates',
+    href: '/templates',
+    icon: FileText,
+  },
+  {
     title: 'Analytics',
-    href: '/dashboard/analytics',
+    href: '/analytics',
     icon: BarChart3,
   },
   {
     title: 'Settings',
-    href: '/dashboard/settings',
+    href: '/settings',
     icon: Settings,
   },
 ];
@@ -53,51 +71,51 @@ export function Sidebar() {
     <div
       className={cn(
         'relative h-screen border-r border-gray-200 bg-white transition-all duration-300 dark:border-gray-800 dark:bg-gray-900',
-        isCollapsed ? 'w-20' : 'w-64',
+        isCollapsed ? 'w-14' : 'w-48',
       )}
     >
       <Button
         variant="ghost"
         size="icon"
-        className="absolute -right-4 top-6 z-20 rounded-full border bg-white dark:bg-gray-900"
+        className="absolute -right-3 top-4 z-20 h-6 w-6 rounded-full border bg-white dark:bg-gray-900"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
       </Button>
 
-      <nav className="flex h-full flex-col px-4 py-6">
+      <nav className="flex h-full flex-col px-2 py-4">
         <Link
           href="/dashboard"
           className={cn(
-            'logo-text mb-6 flex items-center gap-3 px-2 text-xl font-bold',
+            'logo-text mb-4 flex items-center gap-2 px-2 text-sm font-semibold',
             isCollapsed ? 'justify-center px-0' : '',
           )}
         >
-          <Brain className="h-6 w-6 shrink-0 text-primary" />
+          <Brain className="h-4 w-4 shrink-0 text-primary" />
           {!isCollapsed && <span className="truncate">TaskMindAI</span>}
         </Link>
 
-        <div className="flex-1 space-y-1.5">
+        <div className="flex-1 space-y-1">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50',
+                'flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50',
                 pathname === item.href
                   ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50'
                   : '',
-                isCollapsed ? 'justify-center px-2' : '',
+                isCollapsed ? 'justify-center' : '',
               )}
             >
-              <item.icon className="h-5 w-5 shrink-0" />
+              <item.icon className="h-4 w-4 shrink-0" />
               {!isCollapsed && <span className="truncate">{item.title}</span>}
             </Link>
           ))}
         </div>
         <div
           className={cn(
-            'mt-auto border-t border-gray-200 pt-4 dark:border-gray-800',
+            'mt-auto border-t border-gray-200 pt-3 dark:border-gray-800',
             isCollapsed ? 'flex justify-center' : '',
           )}
         >

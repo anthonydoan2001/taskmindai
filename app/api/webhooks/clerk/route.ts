@@ -1,3 +1,4 @@
+// Clerk/Supabase integration: user IDs are TEXT (Clerk-compatible)
 import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
@@ -6,6 +7,7 @@ import type { Database } from '@/types/supabase';
 import { Axiom } from '@axiomhq/js';
 import { ErrorTypes } from '@/lib/errors';
 import { generateRequestId } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 // Debug environment variables
 console.log('Environment variables check:', {
@@ -43,6 +45,9 @@ type MetricName =
   | 'user_deletion_attempt'
   | 'user_deletion_success'
   | 'user_deletion_error'
+  | 'user_update'
+  | 'user_update_error'
+  | 'user_update_success'
   | 'database_operation_attempt'
   | 'database_operation_success'
   | 'database_operation_error'
@@ -54,9 +59,13 @@ type OperationName =
   | 'verify_webhook'
   | 'user_creation'
   | 'user_deletion'
+  | 'user_update'
   | 'upsert_profile'
   | 'delete_profile'
   | 'webhook_handler';
+
+// Define days of week as string literals to match database enum
+type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 // Remove edge runtime to avoid potential issues
 export const dynamic = 'force-dynamic';
@@ -75,7 +84,7 @@ const axiom = new Axiom({
 });
 
 // Enhanced logger with request tracing and performance monitoring
-const logger = {
+const webhookLogger = {
   info: async (message: string, context = {}) => {
     const logData = {
       _time: new Date().toISOString(),
@@ -199,20 +208,20 @@ const timeOperation = async <T>(
 ): Promise<T> => {
   const start = Date.now();
   try {
-    await logger.metric(`${operation}_attempt` as MetricName, 1, context);
+    await webhookLogger.metric(`${operation}_attempt` as MetricName, 1, context);
     const result = await fn();
     const duration = Date.now() - start;
-    await logger.trackPerformance(operation, duration, context);
-    await logger.metric(`${operation}_success` as MetricName, 1, context);
+    await webhookLogger.trackPerformance(operation, duration, context);
+    await webhookLogger.metric(`${operation}_success` as MetricName, 1, context);
     return result;
   } catch (error) {
     const duration = Date.now() - start;
-    await logger.trackPerformance(operation, duration, { 
+    await webhookLogger.trackPerformance(operation, duration, { 
       ...context, 
       status: 'error',
       errorType: error instanceof Error ? error.name : 'unknown'
     });
-    await logger.metric(`${operation}_error` as MetricName, 1, {
+    await webhookLogger.metric(`${operation}_error` as MetricName, 1, {
       ...context,
       errorType: error instanceof Error ? error.name : 'unknown'
     });
@@ -223,7 +232,7 @@ const timeOperation = async <T>(
 // Initialize Supabase client with more detailed error handling
 function initSupabaseClient() {
   return timeOperation('init_supabase', async () => {
-    logger.info('Initializing Supabase client');
+    webhookLogger.info('Initializing Supabase client');
     
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -234,11 +243,11 @@ function initSupabaseClient() {
         !key && 'SUPABASE_SERVICE_ROLE_KEY'
       ].filter(Boolean);
       
-      logger.error('Missing Supabase environment variables', null, { missingVars });
+      webhookLogger.error('Missing Supabase environment variables', null, { missingVars });
       throw new Error(`${ErrorTypes.ENVIRONMENT}: Missing variables: ${missingVars.join(', ')}`);
     }
 
-    logger.info('Supabase client initialized', { url });
+    webhookLogger.info('Supabase client initialized', { url });
     return createClient<Database>(url, key, {
       auth: {
         autoRefreshToken: false,
@@ -248,9 +257,338 @@ function initSupabaseClient() {
   });
 }
 
+// Default work schedule (Mon-Fri, 9-5)
+const DEFAULT_WORK_DAYS: DayOfWeek[] = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday'
+];
+
+async function handleUserCreation(user: UserWebhookEvent['data'], requestId: string) {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  
+  try {
+    // Insert into users table first
+    const { error: userError } = await supabase
+      .from('users')
+      .upsert({
+        id: user.id,
+        email: user.email_addresses[0]?.email_address,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+    if (userError) {
+      webhookLogger.error('Error creating user', userError, { userId: user.id, requestId });
+      throw userError;
+    }
+
+    // Insert default preferences
+    const { error: prefError } = await supabase
+      .from('user_preferences')
+      .upsert({
+        user_id: user.id,
+        preferences: {
+          theme: 'light',
+          notifications: {
+            email: true,
+            push: true
+          }
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+    if (prefError) {
+      webhookLogger.error('Error creating user preferences', prefError, { userId: user.id, requestId });
+      // Don't fail webhook if preferences fail
+    }
+
+    // Insert default work schedules
+    const { error: scheduleError } = await supabase
+      .from('work_schedules')
+      .insert(
+        DEFAULT_WORK_DAYS.map(day => ({
+          user_id: user.id,
+          day,
+          start_time: '09:00',
+          end_time: '17:00',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }))
+      );
+
+    if (scheduleError) {
+      webhookLogger.error('Error creating work schedules', scheduleError, { userId: user.id, requestId });
+      // Don't fail webhook if schedules fail
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    webhookLogger.error('Error in webhook handler', error, { userId: user.id, requestId });
+    throw error;
+  }
+}
+
+async function handleUserDeletion(userData: DeleteWebhookEvent['data'], requestId: string) {
+  const { id } = userData;
+  
+  webhookLogger.info('Processing user deletion', { userId: id, requestId });
+
+  try {
+    const supabase = await initSupabaseClient();
+    
+    const { error: delError } = await timeOperation('user_deletion',
+      async () => supabase
+        .from('users')
+        .delete()
+        .eq('id', id),
+      { userId: id, requestId }
+    );
+
+    if (delError) {
+      webhookLogger.error('Error deleting user', delError, { userId: id, requestId });
+      webhookLogger.metric('user_deletion_error', 1, { error_type: 'delete_error', userId: id });
+      throw new Error(`${ErrorTypes.DATABASE}: ${delError.message}`);
+    }
+
+    webhookLogger.metric('user_deletion_success', 1, { userId: id });
+    webhookLogger.info('Successfully deleted user', { userId: id, requestId });
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    webhookLogger.error('Error during user deletion', error, { userId: id, requestId });
+    webhookLogger.metric('user_deletion_error', 1, {
+      error_type: error instanceof Error ? error.name : 'unknown',
+      userId: id
+    });
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : 'Unknown error during user deletion',
+      errorType: ErrorTypes.USER_DELETION,
+      details: error
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+async function handleUserUpdate(userData: UserWebhookEvent['data'], requestId: string) {
+  const { id, email_addresses } = userData;
+  const firstName = (userData as any).first_name ?? '';
+  const lastName = (userData as any).last_name ?? '';
+  const primaryEmail = email_addresses?.[0]?.email_address;
+  const fullName = `${firstName} ${lastName}`.trim();
+  
+  webhookLogger.info('Processing user update', { userId: id, email: primaryEmail, requestId });
+
+  if (!primaryEmail) {
+    webhookLogger.error('No email address found for user', null, { userId: id, requestId });
+    webhookLogger.metric('user_update_error', 1, { error_type: 'missing_email', userId: id });
+    throw new Error(`${ErrorTypes.USER_CREATION}: No email address found for user ${id}`);
+  }
+
+  try {
+    const supabase = await initSupabaseClient();
+
+    const { error: updateError } = await timeOperation('user_update',
+      async () => supabase
+        .from('users')
+        .update({
+          email: primaryEmail,
+          full_name: fullName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id),
+      { userId: id, email: primaryEmail, requestId }
+    );
+
+    if (updateError) {
+      webhookLogger.error('Error updating user', updateError, { userId: id, email: primaryEmail, requestId });
+      webhookLogger.metric('user_update_error', 1, { error_type: 'update_error', userId: id });
+      throw new Error(`${ErrorTypes.DATABASE}: ${updateError.message}`);
+    }
+
+    webhookLogger.metric('user_update_success', 1, { userId: id });
+    webhookLogger.info('Successfully updated user', { userId: id, requestId });
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    webhookLogger.error('Error during user update', error, { userId: id, email: primaryEmail, requestId });
+    webhookLogger.metric('user_update_error', 1, { 
+      error_type: error instanceof Error ? error.name : 'unknown',
+      userId: id 
+    });
+    
+    // Handle database errors with 500 status
+    if (error instanceof Error) {
+      if (error.message.includes('Database connection failed') || 
+          error.message.includes('duplicate key value') ||
+          error.message.startsWith(ErrorTypes.DATABASE)) {
+        return new Response(JSON.stringify({ 
+          error: error.message,
+          errorType: ErrorTypes.DATABASE
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : 'Unknown error during user update',
+      errorType: ErrorTypes.USER_CREATION
+    }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Ensure environment variables are defined
+const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!webhookSecret || !supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing required environment variables');
+}
+
+// Initialize clients
+const wh = new Webhook(webhookSecret);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Default work schedule
+const DEFAULT_WORK_HOURS = {
+  start: '09:00',
+  end: '17:00',
+};
+
+// Helper to add audit logs
+async function addAuditLog(userId: string, action: string, details: any) {
+  await supabase.from('audit_logs').insert({
+    user_id: userId,
+    action,
+    details,
+  });
+}
+
+export async function POST(req: Request) {
+  const payload = await req.json();
+  const headerPayload = headers();
+  const svixId = headerPayload.get('svix-id');
+  const svixTimestamp = headerPayload.get('svix-timestamp');
+  const svixSignature = headerPayload.get('svix-signature');
+
+  // Validate webhook
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    return new Response('Missing svix headers', { status: 400 });
+  }
+
+  // Verify webhook
+  try {
+    wh.verify(JSON.stringify(payload), {
+      'svix-id': svixId,
+      'svix-timestamp': svixTimestamp,
+      'svix-signature': svixSignature,
+    });
+  } catch (err) {
+    console.error('Error verifying webhook:', err);
+    return new Response('Error verifying webhook', { status: 400 });
+  }
+
+  // Handle webhook
+  try {
+    const { type, data: user } = payload;
+    const userId = user.id as string;
+
+    switch (type) {
+      case 'user.created': {
+        if (!user.email_addresses?.[0]?.email_address) {
+          return new Response('Missing email address', { status: 400 });
+        }
+
+        // Create user
+        await supabase.from('users').insert({
+          id: userId,
+          email: user.email_addresses[0].email_address,
+        });
+
+        // Create default preferences
+        await supabase.from('user_preferences').insert({
+          user_id: userId,
+          preferences: {
+            theme: 'system',
+            notifications: {
+              email: true,
+              push: true,
+            },
+          },
+        });
+
+        // Create default work schedules
+        for (const day of DEFAULT_WORK_DAYS) {
+          await supabase.from('work_schedules').insert({
+            user_id: userId,
+            day,
+            start_time: DEFAULT_WORK_HOURS.start,
+            end_time: DEFAULT_WORK_HOURS.end,
+          });
+        }
+
+        // Add audit log
+        await addAuditLog(userId, 'user.created', {
+          email: user.email_addresses[0].email_address,
+        });
+
+        break;
+      }
+
+      case 'user.deleted': {
+        // Delete user (will cascade to preferences and schedules)
+        await supabase.from('users').delete().eq('id', userId);
+
+        // Add audit log
+        await addAuditLog(userId, 'user.deleted', {
+          timestamp: new Date().toISOString(),
+        });
+
+        break;
+      }
+    }
+
+    return new Response('Webhook processed', { status: 200 });
+  } catch (err) {
+    console.error('Error processing webhook:', err);
+    return new Response('Error processing webhook', { status: 500 });
+  }
+}
+
+async function handleUserCreated(event: WebhookEvent, requestId: string) {
+  // ... rest of the handler implementation ...
+}
+
+async function handleUserDeleted(event: WebhookEvent, requestId: string) {
+  // ... rest of the handler implementation ...
+}
+
 async function syncUserWithSupabase(event: WebhookEvent) {
   const requestId = generateRequestId();
-  await logger.trace(requestId, 'start', { eventType: event.type });
+  await webhookLogger.trace(requestId, 'start', { eventType: event.type });
   
   const eventContext = {
     eventType: event.type,
@@ -258,7 +596,7 @@ async function syncUserWithSupabase(event: WebhookEvent) {
     requestId
   };
   
-  logger.info('Processing webhook event', eventContext);
+  webhookLogger.info('Processing webhook event', eventContext);
 
   try {
     if (event.type === 'user.created') {
@@ -275,7 +613,14 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       );
     }
 
-    await logger.trace(requestId, 'end', { 
+    if (event.type === 'user.updated') {
+      return await timeOperation('user_update',
+        () => handleUserUpdate(event.data as UserWebhookEvent['data'], requestId),
+        eventContext
+      );
+    }
+
+    await webhookLogger.trace(requestId, 'end', { 
       eventType: event.type,
       status: 'success'
     });
@@ -285,282 +630,11 @@ async function syncUserWithSupabase(event: WebhookEvent) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    await logger.trace(requestId, 'end', { 
+    await webhookLogger.trace(requestId, 'end', { 
       eventType: event.type,
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
     throw error;
   }
-}
-
-async function handleUserCreation(userData: UserWebhookEvent['data'], requestId: string) {
-  const { id, email_addresses } = userData;
-  const primaryEmail = email_addresses?.[0]?.email_address;
-  
-  logger.info('Processing user creation', { userId: id, email: primaryEmail, requestId });
-
-  if (!primaryEmail) {
-    logger.error('No email address found for user', null, { userId: id, requestId });
-    logger.metric('user_creation_error', 1, { error_type: 'missing_email', userId: id });
-    throw new Error(`${ErrorTypes.USER_CREATION}: No email address found for user ${id}`);
-  }
-
-  try {
-    const supabase = await initSupabaseClient();
-
-    const { error: upsertError } = await timeOperation('upsert_profile',
-      async () => supabase
-        .from('user_profiles')
-        .upsert(
-          {
-            user_id: id,
-            email: primaryEmail,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            settings: {
-              militaryTime: false,
-              workType: 'full-time',
-              categories: ['Work', 'Personal', 'Errands']
-            },
-            working_days: {
-              monday: { start: '09:00', end: '17:00', isWorkingDay: true },
-              tuesday: { start: '09:00', end: '17:00', isWorkingDay: true },
-              wednesday: { start: '09:00', end: '17:00', isWorkingDay: true },
-              thursday: { start: '09:00', end: '17:00', isWorkingDay: true },
-              friday: { start: '09:00', end: '17:00', isWorkingDay: true },
-              saturday: { start: '09:00', end: '17:00', isWorkingDay: false },
-              sunday: { start: '09:00', end: '17:00', isWorkingDay: false }
-            }
-          },
-          {
-            onConflict: 'user_id',
-            ignoreDuplicates: false
-          }
-        ),
-      { userId: id, email: primaryEmail, requestId }
-    );
-
-    if (upsertError) {
-      logger.error('Error upserting user profile', upsertError, { userId: id, email: primaryEmail, requestId });
-      logger.metric('user_creation_error', 1, { error_type: 'upsert_error', userId: id });
-      throw new Error(`${ErrorTypes.DATABASE}: ${upsertError.message}`);
-    }
-
-    logger.metric('user_creation_success', 1, { userId: id });
-    logger.info('Successfully upserted user profile', { userId: id, requestId });
-
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error) {
-    logger.error('Error during user creation', error, { userId: id, email: primaryEmail, requestId });
-    logger.metric('user_creation_error', 1, { 
-      error_type: error instanceof Error ? error.name : 'unknown',
-      userId: id 
-    });
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error during user creation',
-      errorType: ErrorTypes.USER_CREATION,
-      details: error
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
-
-async function handleUserDeletion(userData: DeleteWebhookEvent['data'], requestId: string) {
-  const { id } = userData;
-  
-  logger.info('Processing user deletion', { userId: id, requestId });
-
-  try {
-    const supabase = await initSupabaseClient();
-    
-    const { error: profileError } = await timeOperation('delete_profile',
-      async () => supabase
-        .from('user_profiles')
-        .delete()
-        .eq('user_id', id),
-      { userId: id, requestId }
-    );
-
-    if (profileError) {
-      logger.error('Error deleting user profile', profileError, { userId: id, requestId });
-      logger.metric('user_deletion_error', 1, { error_type: 'delete_error', userId: id });
-      throw new Error(`${ErrorTypes.DATABASE}: ${profileError.message}`);
-    }
-
-    logger.metric('user_deletion_success', 1, { userId: id });
-    logger.info('Successfully deleted user profile', { userId: id, requestId });
-
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error) {
-    logger.error('Error during user deletion', error, { userId: id, requestId });
-    logger.metric('user_deletion_error', 1, {
-      error_type: error instanceof Error ? error.name : 'unknown',
-      userId: id
-    });
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error during user deletion',
-      errorType: ErrorTypes.USER_DELETION,
-      details: error
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
-
-export async function POST(req: Request) {
-  const requestId = generateRequestId();
-  
-  // Get headers from request object directly
-  const svixId = req.headers.get('svix-id');
-  const svixTimestamp = req.headers.get('svix-timestamp');
-  const svixSignature = req.headers.get('svix-signature');
-
-  // Log webhook request
-  await axiom.ingest('taskmindai-webhooks-dev', [{
-    _time: new Date().toISOString(),
-    level: 'info',
-    message: 'Webhook endpoint hit:',
-    environment: process.env.NODE_ENV,
-    version: '1.0.0',
-    host: process.env.NEXT_PUBLIC_APP_URL || 'localhost',
-    service: 'clerk-webhook',
-    component: 'api',
-    timestamp_ms: Date.now(),
-    url: req.url,
-    method: req.method,
-    headers: {
-      'svix-id': svixId,
-      'svix-timestamp': svixTimestamp,
-      'svix-signature': svixSignature
-    },
-    requestId
-  }]);
-
-  // Verify webhook signature
-  const payloadString = await req.text();
-  let event: WebhookEvent;
-
-  try {
-    // Check required headers first
-    if (!svixId || !svixTimestamp || !svixSignature) {
-      throw new Error('Missing required Svix headers');
-    }
-
-    // Handle test mode first
-    const isTestMode = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test' || process.env.TEST_MODE === 'true';
-    if (isTestMode) {
-      try {
-        // Parse payload first to validate JSON
-        event = JSON.parse(payloadString) as WebhookEvent;
-        
-        // Verify timestamp is within tolerance
-        const timestamp = parseInt(svixTimestamp);
-        const now = Math.floor(Date.now() / 1000);
-        const tolerance = 5 * 60; // 5 minutes tolerance
-        
-        if (Math.abs(now - timestamp) > tolerance) {
-          await logger.error('Message timestamp too old', null, { 
-            timestamp, 
-            now, 
-            difference: Math.abs(now - timestamp),
-            tolerance,
-            requestId,
-            environment: process.env.NODE_ENV
-          });
-          throw new Error('Message timestamp too old');
-        }
-
-        // In test mode, only verify basic signature format
-        if (!svixSignature.startsWith('v1,')) {
-          await logger.error('Invalid signature format', null, { 
-            signature: svixSignature,
-            requestId,
-            environment: process.env.NODE_ENV
-          });
-          throw new Error('Invalid signature format');
-        }
-
-        await logger.metric('webhook_verification_success', 1, { mode: 'test' });
-        return await syncUserWithSupabase(event);
-      } catch (parseError) {
-        await logger.error('Failed to parse webhook payload in test mode', parseError, { 
-          requestId,
-          payload: payloadString,
-          headers: {
-            'svix-id': svixId,
-            'svix-timestamp': svixTimestamp,
-            'svix-signature': svixSignature
-          },
-          environment: process.env.NODE_ENV
-        });
-        return new Response(
-          JSON.stringify({ 
-            error: ErrorTypes.WEBHOOK_VERIFICATION,
-            details: parseError instanceof Error ? parseError.message : 'Invalid webhook payload'
-          }), 
-          { status: 400 }
-        );
-      }
-    }
-
-    // Production verification with Svix
-    const webhook = new Webhook(process.env.CLERK_WEBHOOK_SECRET || 'test-secret');
-    try {
-      event = webhook.verify(
-        payloadString,
-        {
-          'svix-id': svixId,
-          'svix-timestamp': svixTimestamp,
-          'svix-signature': svixSignature,
-        }
-      ) as WebhookEvent;
-
-      await logger.metric('webhook_verification_success', 1, { mode: 'production' });
-      return await syncUserWithSupabase(event);
-    } catch (verifyError) {
-      await logger.error('Webhook verification failed', verifyError, { requestId });
-      await logger.metric('webhook_verification_error', 1, { 
-        mode: process.env.NODE_ENV === 'test' ? 'test' : 'production',
-        error: verifyError instanceof Error ? verifyError.message : 'unknown'
-      });
-      return new Response(
-        JSON.stringify({ 
-          error: ErrorTypes.WEBHOOK_VERIFICATION,
-          details: verifyError instanceof Error ? verifyError.message : 'Unknown verification error'
-        }), 
-        { status: 400 }
-      );
-    }
-  } catch (err) {
-    await logger.error('Webhook processing failed', err, { requestId });
-    await logger.metric('webhook_error', 1, { 
-      mode: process.env.NODE_ENV === 'test' ? 'test' : 'production',
-      error: err instanceof Error ? err.message : 'unknown'
-    });
-    return new Response(
-      JSON.stringify({ 
-        error: ErrorTypes.WEBHOOK_VERIFICATION,
-        details: err instanceof Error ? err.message : 'Unknown error'
-      }), 
-      { status: 400 }
-    );
-  }
-}
-
-async function handleUserCreated(event: WebhookEvent, requestId: string) {
-  // ... rest of the handler implementation ...
-}
-
-async function handleUserDeleted(event: WebhookEvent, requestId: string) {
-  // ... rest of the handler implementation ...
 }

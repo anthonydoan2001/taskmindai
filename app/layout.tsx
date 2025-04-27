@@ -4,6 +4,7 @@ import { SessionProvider } from '@/components/providers/session-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { Toaster } from 'sonner';
 import SupabaseProvider from '@/utils/supabase/context';
+import { TRPCProvider } from './providers';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -28,8 +29,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SupabaseProvider>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
               <SessionProvider>
-                <main className="min-h-screen bg-white dark:bg-gray-900">{children}</main>
-                <Toaster richColors />
+                <TRPCProvider>
+                  <main className="min-h-screen bg-white dark:bg-gray-900">{children}</main>
+                  <Toaster richColors />
+                </TRPCProvider>
               </SessionProvider>
             </ThemeProvider>
           </SupabaseProvider>

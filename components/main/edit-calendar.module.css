@@ -1,0 +1,61 @@
+.calendar {
+  --fc-border-color: #333333;
+  --fc-page-bg-color: #1E1E1E;
+  --fc-neutral-bg-color: #252525;
+  --fc-neutral-text-color: #FFFFFF;
+  --fc-today-bg-color: rgba(108, 99, 255, 0.1);
+}
+
+.calendar :global(.fc-theme-standard td),
+.calendar :global(.fc-theme-standard th) {
+  border-color: var(--fc-border-color);
+}
+
+.calendar :global(.fc-timegrid-slot-label) {
+  color: #666666;
+  font-size: 0.85rem;
+}
+
+.calendar :global(.fc-col-header-cell) {
+  padding: 8px 0;
+  background-color: var(--fc-neutral-bg-color);
+}
+
+.calendar :global(.fc-toolbar-title) {
+  color: #FFFFFF;
+  font-size: 1.5rem !important;
+}
+
+.calendar :global(.fc-button) {
+  background-color: #333333 !important;
+  border-color: #444444 !important;
+  color: #FFFFFF !important;
+}
+
+.calendar :global(.fc-button:hover) {
+  background-color: #444444 !important;
+}
+
+.calendar :global(.fc-button-active) {
+  background-color: #6C63FF !important;
+}
+
+.calendar :global(.fc-event) {
+  border-radius: 4px;
+  border: none !important;
+  padding: 2px 4px;
+}
+
+.calendar :global(.fc-event-title) {
+  font-weight: 500;
+  padding: 2px 0;
+}
+
+.calendar :global(.fc-event-time) {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.calendar :global(.fc-timegrid-event) {
+  min-height: 32px;
+} 
